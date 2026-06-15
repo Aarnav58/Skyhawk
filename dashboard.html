@@ -8,6 +8,40 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <!-- BUTTON STYLES -->
+    <style>
+        .flight-controls {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 20px;
+        }
+
+        .flight-controls button {
+            padding: 12px 25px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+
+        .takeoff {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .logout {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .land {
+            background-color: #dc3545;
+            color: white;
+        }
+    </style>
 </head>
 
 <body>
@@ -16,6 +50,14 @@
         <h1>Skyhawk Dashboard</h1>
         <div class="date">DATE</div>
     </div>
+
+    <!-- TAKEOFF / LOGOUT / LAND BUTTONS -->
+    <div class="flight-controls">
+        <button id="takeoffBtn" class="takeoff">Take Off</button>
+        <button id="logoutBtn" class="logout">Log Out</button>
+        <button id="landBtn" class="land">Land</button>
+    </div>
+
     <script>
         function updateTime() {
             const now = new Date();
@@ -25,8 +67,8 @@
 
         setInterval(updateTime, 1000);
         updateTime();
-
     </script>
+
     <div class="accordion">
         <div class="accordion-header">
             <h2>Status</h2>
@@ -50,11 +92,6 @@
 
         <div class="accordion-content">
             <div id="map" style="width:100%; height:400px;"></div>
-
-
-
-
-
         </div>
     </div>
 
@@ -78,9 +115,8 @@
         </div>
     </div>
 
-
     <script>
-        let droneOnline = false; // change to true when drone connects
+        let droneOnline = false;
         let detectionCount = 0;
 
         function updateStatus() {
@@ -95,7 +131,6 @@
                 return;
             }
 
-            // WHEN DRONE IS ON — YOU WILL REPLACE THESE WITH REAL VALUES
             document.getElementById("battery").textContent = "87%";
             document.getElementById("airTime").textContent = "12 min";
             document.getElementById("missionTime").textContent = "4 min";
@@ -104,11 +139,11 @@
             document.getElementById("detections").textContent = detectionCount;
             document.getElementById("sensors").textContent = "Normal";
             setInterval(updateStatus, 1000);
-
         }
 
         updateStatus();
     </script>
+
     <script>
         document.querySelectorAll('.accordion-header').forEach(header => {
             header.addEventListener('click', () => {
@@ -117,9 +152,8 @@
 
                 content.style.display = isOpen ? "none" : "block";
 
-                // When opening the Map accordion
                 if (!isOpen && header.querySelector('h2').textContent === "Map") {
-                    initMap(); // create map ONLY when opened
+                    initMap();
 
                     setTimeout(() => {
                         if (map) map.invalidateSize();
@@ -130,7 +164,7 @@
     </script>
 
     <script>
-        let droneOnline = false; // you will set this to true when drone connects
+        let droneOnline = false;
 
         function updateCameras() {
             const cam1 = document.getElementById("cam1");
@@ -147,7 +181,6 @@
                 return;
             }
 
-            // WHEN DRONE IS ON — auto connect to Pi camera feeds
             cam1.innerHTML = `<img src="http://192.168.4.188/stream" style="width:100%; height:100%; object-fit:cover;">`;
             cam1.style.background = "none";
 
@@ -155,10 +188,10 @@
             cam2.style.background = "none";
         }
 
-        // Auto-refresh cameras every second
         setInterval(updateCameras, 1000);
         updateCameras();
     </script>
+
     <script>
         let map = null;
         let deviceMarker = null;
@@ -179,14 +212,9 @@
                 bounds: [[-85, -180], [85, 180]]
             }).addTo(map);
 
-            // START LOCATION TRACKING *AFTER* MAP EXISTS
             navigator.geolocation.watchPosition(pos => {
-                console.log("GEO POSITION:", pos);
-
                 const lat = pos.coords.latitude;
                 const lng = pos.coords.longitude;
-
-                console.log("LAT:", lat, "LNG:", lng);
 
                 if (!deviceMarker) {
                     deviceMarker = L.marker([lat, lng]).addTo(map);
@@ -202,13 +230,22 @@
                 maximumAge: 0,
                 timeout: 5000
             });
-
-
         }
+    </script>
 
+    <!-- BUTTON LOGIC -->
+    <script>
+        document.getElementById("takeoffBtn").addEventListener("click", () => {
+            console.log("TAKEOFF COMMAND SENT");
+        });
 
+        document.getElementById("landBtn").addEventListener("click", () => {
+            console.log("LAND COMMAND SENT");
+        });
 
-
+        document.getElementById("logoutBtn").addEventListener("click", () => {
+            window.location.href = "index.html";
+        });
     </script>
 
 </body>

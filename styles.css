@@ -1,0 +1,68 @@
+/* -------------------- GENERAL -------------------- */
+
+body {
+    background-color: #8179798e;
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+h1 {
+    text-align: center;
+    color: #000000;
+    font-size: 58px;
+    margin: 0;
+    font-weight: 700;
+}
+
+/* -------------------- TOP BAR -------------------- */
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 25px;
+    background-color: #d9d9d9;
+    border-bottom: 2px solid #222;
+}
+
+.time,
+.date {
+    font-size: 32px;
+    color: black;
+    font-weight: 700;
+}
+
+/* -------------------- ACCORDION -------------------- */
+
+.accordion {
+    width: 90%;
+    margin: 20px auto;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.accordion-header {
+    background-color: #d9d9d9;
+    color: black;
+    padding: 20px;
+    cursor: pointer;
+    font-size: 28px;
+}
+
+/* IMPORTANT: only ONE definition, and NO overflow:hidden */
+.accordion-content {
+    background-color: white;
+    padding: 20px;
+    display: none;
+    /* closed by default */
+}
+
+/* -------------------- STATUS ITEMS -------------------- */
+
+.status-item {
+    font-size: 22px;
+    margin-bottom: 10px;
+}
+
+/* ----------------

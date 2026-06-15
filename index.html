@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Skyhawk Login</title>
+    <style>
+        body {
+            background: #1e1e1e;
+            color: white;
+            font-family: Arial;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #login-box {
+            background: #2e2e2e;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            width: 300px;
+        }
+
+        input {
+            width: 90%;
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 8px;
+            border: none;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: #4caf50;
+            color: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="login-box">
+        <h2>Skyhawk Login</h2>
+        <input type="password" id="password" placeholder="Enter Password">
+        <button onclick="login()">Login</button>
+    </div>
+
+    <script>
+        function login() {
+            const pass = document.getElementById("password").value;
+
+            if (pass === "Skyhawkgoat") {
+                window.location.href = "dashboard.html";
+            } else {
+                alert("Incorrect password");
+            }
+        }
+    </script>
+
+</body>
+
+</html>

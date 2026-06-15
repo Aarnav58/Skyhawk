@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+
+<body>
+    <div class="topbar">
+        <div class="time">TIME</div>
+        <h1>Skyhawk Dashboard</h1>
+        <div class="date">DATE</div>
+    </div>
+    <script>
+        function updateTime() {
+            const now = new Date();
+            document.querySelector('.time').textContent = now.toLocaleTimeString();
+            document.querySelector('.date').textContent = now.toLocaleDateString();
+        }
+
+        setInterval(updateTime, 1000);
+        updateTime();
+
+    </script>
+    <div class="accordion">
+        <div class="accordion-header">
+            <h2>Status</h2>
+        </div>
+
+        <div class="accordion-content">
+            <div class="status-item"><strong>Battery:</strong> <span id="battery">--</span></div>
+            <div class="status-item"><strong>Time Left in Air:</strong> <span id="airTime">--</span></div>
+            <div class="status-item"><strong>Mission Time Left:</strong> <span id="missionTime">--</span></div>
+            <div class="status-item"><strong>Emergency Landing:</strong> <span id="emergency">--</span></div>
+            <div class="status-item"><strong>Drone Location:</strong> <span id="droneLocation">--</span></div>
+            <div class="status-item"><strong>Locations Detected:</strong> <span id="detections">--</span></div>
+            <div class="status-item"><strong>Sensors:</strong> <span id="sensors">--</span></div>
+        </div>
+    </div>
+
+    <div class="accordion">
+        <div class="accordion-header">
+            <h2>Map</h2>
+        </div>
+
+        <div class="accordion-content">
+            <div id="map" style="width:100%; height:400px;"></div>
+
+
+
+
+
+        </div>
+    </div>
+
+    <div class="accordion">
+        <div class="accordion-header">
+            <h2>Camera 1</h2>
+        </div>
+
+        <div class="accordion-content">
+            <div id="cam1" class="camera-box">Device Offline</div>
+        </div>
+    </div>
+
+    <div class="accordion">
+        <div class="accordion-header">
+            <h2>Camera 2</h2>
+        </div>
+
+        <div class="accordion-content">
+            <div id="cam2" class="camera-box">Device Offline</div>
+        </div>
+    </div>
+
+
+    <script>
+        let droneOnline = false; // change to true when drone connects
+        let detectionCount = 0;
+
+        function updateStatus() {
+            if (!droneOnline) {
+                document.getElementById("battery").textContent = "--";
+                document.getElementById("airTime").textContent = "--";
+                document.getElementById("missionTime").textContent = "--";
+                document.getElementById("emergency").textContent = "--";
+                document.getElementById("droneLocation").textContent = "--";
+                document.getElementById("detections").textContent = "--";
+                document.getElementById("sensors").textContent = "--";
+                return;
+            }
+
+            // WHEN DRONE IS ON — YOU WILL REPLACE THESE WITH REAL VALUES
+            document.getElementById("battery").textContent = "87%";
+            document.getElementById("airTime").textContent = "12 min";
+            document.getElementById("missionTime").textContent = "4 min";
+            document.getElementById("emergency").textContent = "NO";
+            document.getElementById("droneLocation").textContent = "39.02, -104.82";
+            document.getElementById("detections").textContent = detectionCount;
+            document.getElementById("sensors").textContent = "Normal";
+            setInterval(updateStatus, 1000);
+
+        }
+
+        updateStatus();
+    </script>
+    <script>
+        document.querySelectorAll('.accordion-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const content = header.nextElementSibling;
+                const isOpen = content.style.display === "block";
+
+                content.style.display = isOpen ? "none" : "block";
+
+                // When opening the Map accordion
+                if (!isOpen && header.querySelector('h2').textContent === "Map") {
+                    initMap(); // create map ONLY when opened
+
+                    setTimeout(() => {
+                        if (map) map.invalidateSize();
+                    }, 300);
+                }
+            });
+        });
+    </script>
+
+    <script>
+        let droneOnline = false; // you will set this to true when drone connects
+
+        function updateCameras() {
+            const cam1 = document.getElementById("cam1");
+            const cam2 = document.getElementById("cam2");
+
+            if (!droneOnline) {
+                cam1.innerHTML = "Device Offline";
+                cam1.style.background = "black";
+                cam1.style.color = "white";
+
+                cam2.innerHTML = "Device Offline";
+                cam2.style.background = "black";
+                cam2.style.color = "white";
+                return;
+            }
+
+            // WHEN DRONE IS ON — auto connect to Pi camera feeds
+            cam1.innerHTML = `<img src="http://192.168.4.188/stream" style="width:100%; height:100%; object-fit:cover;">`;
+            cam1.style.background = "none";
+
+            cam2.innerHTML = `<img src="http://192.168.4.188/stream" style="width:100%; height:100%; object-fit:cover;">`;
+            cam2.style.background = "none";
+        }
+
+        // Auto-refresh cameras every second
+        setInterval(updateCameras, 1000);
+        updateCameras();
+    </script>
+    <script>
+        let map = null;
+        let deviceMarker = null;
+        let mapInitialized = false;
+
+        function initMap() {
+            if (mapInitialized) return;
+            mapInitialized = true;
+
+            map = L.map('map', {
+                worldCopyJump: false,
+                maxBoundsViscosity: 1.0
+            }).setView([20, 0], 2);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                noWrap: true,
+                bounds: [[-85, -180], [85, 180]]
+            }).addTo(map);
+
+            // START LOCATION TRACKING *AFTER* MAP EXISTS
+            navigator.geolocation.watchPosition(pos => {
+                console.log("GEO POSITION:", pos);
+
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+
+                console.log("LAT:", lat, "LNG:", lng);
+
+                if (!deviceMarker) {
+                    deviceMarker = L.marker([lat, lng]).addTo(map);
+                    map.setView([lat, lng], 17);
+                } else {
+                    deviceMarker.setLatLng([lat, lng]);
+                }
+
+            }, err => {
+                console.log("GEO ERROR:", err);
+            }, {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: 5000
+            });
+
+
+        }
+
+
+
+
+    </script>
+
+</body>
+
+</html>

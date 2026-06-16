@@ -41,6 +41,21 @@
             background-color: #dc3545;
             color: white;
         }
+
+        /* NEW: Connect Drone button */
+        #connectDroneBtn {
+            width: 90%;
+            margin: 20px auto;
+            display: block;
+            padding: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 12px;
+            border: none;
+            background: orange;
+            color: black;
+            cursor: pointer;
+        }
     </style>
 </head>
 
@@ -57,6 +72,9 @@
         <button id="logoutBtn" class="logout">Log Out</button>
         <button id="landBtn" class="land">Land</button>
     </div>
+
+    <!-- NEW: CONNECT DRONE BUTTON (only shows if no Pi code) -->
+    <button id="connectDroneBtn">Connect Drone</button>
 
     <script>
         function updateTime() {
@@ -245,6 +263,20 @@
 
         document.getElementById("logoutBtn").addEventListener("click", () => {
             window.location.href = "index.html";
+        });
+
+        // NEW: Connect Drone button logic
+        const piCode = localStorage.getItem("piCode");
+        const connectBtn = document.getElementById("connectDroneBtn");
+
+        if (piCode) {
+            connectBtn.style.display = "none"; // hide if code exists
+        } else {
+            connectBtn.style.display = "block"; // show if no code
+        }
+
+        connectBtn.addEventListener("click", () => {
+            alert("Enter a Pi code on the login page to connect a drone.");
         });
     </script>
 

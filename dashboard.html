@@ -292,30 +292,37 @@
             box-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
         }
 
-        .marker-label {
-            font-size: 10px;
+        /* Drone status indicator */
+        .drone-status {
+            text-align: center;
+            padding: 10px;
+            margin: 10px auto;
+            width: 90%;
+            border-radius: 8px;
             font-weight: bold;
-            margin-top: -5px;
+            font-size: 18px;
+        }
+
+        .drone-status.offline {
+            background: #ff4444;
+            color: white;
+        }
+
+        .drone-status.online {
+            background: #4caf50;
+            color: white;
+        }
+
+        .drone-status.waiting {
+            background: #ff9800;
+            color: white;
+        }
+
+        .drone-status.error {
+            background: #ff4444;
+            color: white;
         }
     </style>
-
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
-
-    <script>
-        const firebaseConfig = {
-            apiKey: "YOUR_KEY",
-            authDomain: "YOUR_DOMAIN",
-            databaseURL: "YOUR_DB_URL",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_BUCKET",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-
-        const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-    </script>
 
 </head>
 
@@ -330,10 +337,13 @@
 
         <!-- TAKEOFF / LOGOUT / LAND BUTTONS -->
         <div class="flight-controls">
-            <button id="takeoffBtn" class="takeoff">Take Off</button>
+            <button id="takeoffBtn" class="takeoff" disabled>Take Off</button>
             <button id="logoutBtn" class="logout">Log Out</button>
-            <button id="landBtn" class="land">Land</button>
+            <button id="landBtn" class="land" disabled>Land</button>
         </div>
+
+        <!-- DRONE STATUS INDICATOR -->
+        <div id="droneStatus" class="drone-status offline">🔴 DRONE OFFLINE</div>
 
         <!-- CONNECT DRONE BUTTON -->
         <button id="connectDroneBtn">Connect Drone</button>
@@ -355,6 +365,7 @@
             </div>
 
             <div class="accordion-content">
+                <div class="status-item"><strong>Wi-Fi:</strong> <span id="wifiStatus">Checking...</span></div>
                 <div class="status-item"><strong>Battery:</strong> <span id="battery">--</span></div>
                 <div class="status-item"><strong>Time Left in Air:</strong> <span id="airTime">--</span></div>
                 <div class="status-item"><strong>Mission Time Left:</strong> <span id="missionTime">--</span></div>
@@ -400,7 +411,7 @@
     <div class="connect-page" id="connectPage">
         <div class="connect-container">
             <h2>🔗 CONNECT DRONE</h2>
-            <div class="sub">Enter the Pi code to take control</div>
+            <div class="sub">Enter the Pi code to connect to SKYHAWK</div>
 
             <div class="error-msg" id="errorMsg">✗ Incorrect code. Please try again.</div>
             <div class="success-msg" id="successMsg">✅ Correct code! Connecting...</div>
@@ -415,12 +426,135 @@
     </div>
 
     <script>
+        // ===== STATE =====
+        let authMode = localStorage.getItem("authMode") || "guest";
         let droneOnline = false;
+        let droneConnected = false;
+        let droneTakeoffComplete = false;
         let detectionCount = 0;
-        let mosquitoSites = [];
+        let isConnecting = false;
+        let isOnSkyhawkWifi = false;
 
+        // ===== CHECK WIFI CONNECTION =====
+        function checkWiFiConnection() {
+            // In a real implementation, you would:
+            // 1. Check if you can reach the Pi at 192.168.4.188
+            // 2. Or check the network name using the Network Information API
+
+            // For now, we'll try to fetch from the Pi
+            // If it succeeds, we're on the SKYHAWK network
+            fetch('http://192.168.4.188/ping', {
+                method: 'GET',
+                mode: 'no-cors',
+                cache: 'no-cache',
+                timeout: 3000
+            })
+                .then(() => {
+                    isOnSkyhawkWifi = true;
+                    updateWifiStatus();
+                })
+                .catch(() => {
+                    isOnSkyhawkWifi = false;
+                    updateWifiStatus();
+                });
+        }
+
+        // ===== UPDATE WIFI STATUS =====
+        function updateWifiStatus() {
+            const wifiStatus = document.getElementById("wifiStatus");
+
+            if (isOnSkyhawkWifi) {
+                if (authMode === "pilot") {
+                    wifiStatus.textContent = "✅ Connected to SKYHAWK (Authenticated)";
+                    wifiStatus.style.color = "green";
+                } else {
+                    wifiStatus.textContent = "📶 Connected to SKYHAWK (Not Authenticated)";
+                    wifiStatus.style.color = "orange";
+                }
+            } else {
+                wifiStatus.textContent = "❌ Not Connected to SKYHAWK";
+                wifiStatus.style.color = "red";
+            }
+        }
+
+        // ===== CHECK DRONE STATUS FROM PI =====
+        function checkDroneStatusFromPi() {
+            if (!isOnSkyhawkWifi) return;
+
+            // In real implementation: fetch('http://192.168.4.188/status')
+            // For demo, we'll simulate after 5 seconds if authenticated
+            if (authMode === "pilot" && !droneOnline) {
+                setTimeout(() => {
+                    if (!droneOnline && authMode === "pilot" && isOnSkyhawkWifi) {
+                        droneOnline = true;
+                        droneConnected = true;
+                        updateAuthUI();
+
+                        const statusEl = document.getElementById('droneStatus');
+                        statusEl.className = 'drone-status online';
+                        statusEl.textContent = '🟢 DRONE ONLINE - ON GROUND';
+
+                        document.getElementById('takeoffBtn').disabled = false;
+                        document.getElementById('takeoffBtn').style.opacity = '1';
+
+                        if (map && mapInitialized) {
+                            addDroneMarker();
+                        }
+
+                        updateStatus();
+                        updateCameras();
+                    }
+                }, 5000);
+            }
+        }
+
+        // ===== SIMULATE Pi CHECKING CODE =====
+        function checkPiCode(code) {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    // First check if we're on SKYHAWK Wi-Fi
+                    if (!isOnSkyhawkWifi) {
+                        resolve({
+                            success: false,
+                            message: "❌ Not connected to SKYHAWK Wi-Fi. Please connect to the drone's network.",
+                            droneOnline: false
+                        });
+                        return;
+                    }
+
+                    const correctCode = "SKY-7F2K9P";
+
+                    if (code !== correctCode) {
+                        resolve({
+                            success: false,
+                            message: "❌ Incorrect code. Please try again.",
+                            droneOnline: false
+                        });
+                    } else {
+                        // Code is correct - check if drone is online
+                        if (droneOnline) {
+                            resolve({
+                                success: true,
+                                message: "✅ Code verified! Drone is online.",
+                                droneOnline: true
+                            });
+                        } else {
+                            resolve({
+                                success: false,
+                                message: "❌ Drone not setup. Please power on the drone and try again.",
+                                droneOnline: false
+                            });
+                        }
+                    }
+                }, 1500);
+            });
+        }
+
+        // ===== UPDATE UI =====
         function updateStatus() {
-            if (!droneOnline) {
+            const statusEl = document.getElementById("droneStatus");
+
+            if (!droneOnline || !droneConnected) {
                 document.getElementById("battery").textContent = "--";
                 document.getElementById("airTime").textContent = "--";
                 document.getElementById("missionTime").textContent = "--";
@@ -428,7 +562,20 @@
                 document.getElementById("droneLocation").textContent = "--";
                 document.getElementById("detections").textContent = "--";
                 document.getElementById("sensors").textContent = "--";
+
+                if (authMode !== "pilot") {
+                    statusEl.className = 'drone-status offline';
+                    statusEl.textContent = '🔴 DRONE OFFLINE';
+                }
                 return;
+            }
+
+            if (droneOnline && droneConnected && !droneTakeoffComplete) {
+                statusEl.className = 'drone-status online';
+                statusEl.textContent = '🟢 DRONE ONLINE - ON GROUND';
+            } else if (droneOnline && droneConnected && droneTakeoffComplete) {
+                statusEl.className = 'drone-status online';
+                statusEl.textContent = '🛸 DRONE FLYING - IN AIR';
             }
 
             document.getElementById("battery").textContent = "87%";
@@ -443,7 +590,7 @@
         updateStatus();
         setInterval(updateStatus, 1000);
 
-        // Accordion toggle
+        // ===== ACCORDION TOGGLE =====
         document.querySelectorAll('.accordion-header').forEach(header => {
             header.addEventListener('click', () => {
                 const content = header.nextElementSibling;
@@ -461,12 +608,12 @@
             });
         });
 
-        // Cameras
+        // ===== CAMERAS =====
         function updateCameras() {
             const cam1 = document.getElementById("cam1");
             const cam2 = document.getElementById("cam2");
 
-            if (!droneOnline) {
+            if (!droneOnline || !droneConnected || !droneTakeoffComplete) {
                 cam1.innerHTML = "Device Offline";
                 cam1.style.background = "black";
                 cam1.style.color = "white";
@@ -487,7 +634,7 @@
         setInterval(updateCameras, 1000);
         updateCameras();
 
-        // ===== MAP WITH MARKERS =====
+        // ===== MAP =====
         let map = null;
         let computerMarker = null;
         let droneMarker = null;
@@ -536,7 +683,6 @@
                 bounds: [[-85, -180], [85, 180]]
             }).addTo(map);
 
-            // Get computer location - GREEN MARKER
             navigator.geolocation.watchPosition(pos => {
                 const lat = pos.coords.latitude;
                 const lng = pos.coords.longitude;
@@ -551,17 +697,8 @@
                     computerMarker.setLatLng([lat, lng]);
                 }
 
-                // If drone is online, show drone marker - BLUE MARKER
-                if (droneOnline && !droneMarker) {
-                    droneMarker = L.marker([lat + 0.005, lng + 0.005], {
-                        icon: createBlueIcon()
-                    }).addTo(map);
-                    droneMarker.bindPopup('🔵 Drone Location');
-                }
-
             }, err => {
                 console.log("GEO ERROR:", err);
-                // Fallback location
                 if (!computerMarker) {
                     computerMarker = L.marker([39.02, -104.82], {
                         icon: createGreenIcon()
@@ -573,46 +710,44 @@
                 maximumAge: 0,
                 timeout: 5000
             });
+        }
 
-            // Add drone marker if online
-            if (droneOnline && !droneMarker) {
-                droneMarker = L.marker([39.025, -104.825], {
+        // ===== DRONE FUNCTIONS =====
+        function addDroneMarker() {
+            if (droneMarker && map) {
+                map.removeLayer(droneMarker);
+            }
+            if (map && mapInitialized && droneOnline) {
+                const center = map.getCenter();
+                droneMarker = L.marker([center.lat + 0.003, center.lng + 0.003], {
                     icon: createBlueIcon()
                 }).addTo(map);
-                droneMarker.bindPopup('🔵 Drone Location');
-            }
-
-            // Add mosquito detection sites - RED MARKERS
-            if (droneOnline) {
-                addMosquitoSites();
+                droneMarker.bindPopup('🔵 Drone on Ground - Ready for Takeoff');
             }
         }
 
         function addMosquitoSites() {
-            // Clear old mosquito markers
             mosquitoMarkers.forEach(m => {
                 if (map) map.removeLayer(m);
             });
             mosquitoMarkers = [];
 
-            // Random mosquito detection sites (simulated)
             const baseLat = 39.02;
             const baseLng = -104.82;
             const sites = [];
 
-            // Generate 3-7 random sites
-            const numSites = Math.floor(Math.random() * 5) + 3;
+            const numSites = Math.floor(Math.random() * 4) + 2;
             for (let i = 0; i < numSites; i++) {
-                const lat = baseLat + (Math.random() - 0.5) * 0.03;
-                const lng = baseLng + (Math.random() - 0.5) * 0.03;
+                const lat = baseLat + (Math.random() - 0.5) * 0.02;
+                const lng = baseLng + (Math.random() - 0.5) * 0.02;
                 sites.push({ lat, lng });
             }
 
-            sites.forEach(site => {
+            sites.forEach((site, index) => {
                 const marker = L.marker([site.lat, site.lng], {
                     icon: createRedIcon()
                 }).addTo(map);
-                marker.bindPopup(`🔴 Mosquito Detection Site #${mosquitoMarkers.length + 1}`);
+                marker.bindPopup(`🔴 Mosquito Detection Site #${index + 1}`);
                 mosquitoMarkers.push(marker);
             });
 
@@ -620,23 +755,46 @@
             document.getElementById("detections").textContent = detectionCount;
         }
 
-        // Simulate mosquito detections every 10 seconds when drone is online
-        setInterval(() => {
-            if (droneOnline && map && mapInitialized) {
-                // Randomly move drone slightly
-                if (droneMarker) {
+        function takeOffDrone() {
+            if (!droneConnected || !droneOnline) {
+                alert('⚠️ Drone is not online!');
+                return;
+            }
+
+            if (droneTakeoffComplete) {
+                alert('🛸 Drone is already in the air!');
+                return;
+            }
+
+            droneTakeoffComplete = true;
+
+            const statusEl = document.getElementById('droneStatus');
+            statusEl.className = 'drone-status online';
+            statusEl.textContent = '🛸 DRONE FLYING - IN AIR';
+
+            document.getElementById('landBtn').disabled = false;
+            document.getElementById('landBtn').style.opacity = '1';
+
+            if (droneMarker && map) {
+                const pos = droneMarker.getLatLng();
+                droneMarker.setLatLng([pos.lat + 0.005, pos.lng + 0.005]);
+                droneMarker.bindPopup('🔵 Drone in Flight');
+            }
+
+            addMosquitoSites();
+
+            if (window.detectionInterval) {
+                clearInterval(window.detectionInterval);
+            }
+            window.detectionInterval = setInterval(() => {
+                if (droneTakeoffComplete && droneMarker) {
                     const currentPos = droneMarker.getLatLng();
                     const newLat = currentPos.lat + (Math.random() - 0.5) * 0.002;
                     const newLng = currentPos.lng + (Math.random() - 0.5) * 0.002;
                     droneMarker.setLatLng([newLat, newLng]);
-                    droneMarker.bindPopup(`🔵 Drone Location<br>Lat: ${newLat.toFixed(5)}<br>Lng: ${newLng.toFixed(5)}`);
-                }
 
-                // Add new mosquito detection site
-                if (droneMarker) {
-                    const dronePos = droneMarker.getLatLng();
-                    const lat = dronePos.lat + (Math.random() - 0.5) * 0.005;
-                    const lng = dronePos.lng + (Math.random() - 0.5) * 0.005;
+                    const lat = newLat + (Math.random() - 0.5) * 0.005;
+                    const lng = newLng + (Math.random() - 0.5) * 0.005;
 
                     const marker = L.marker([lat, lng], {
                         icon: createRedIcon()
@@ -647,51 +805,91 @@
                     detectionCount = mosquitoMarkers.length;
                     document.getElementById("detections").textContent = detectionCount;
                 }
+            }, 8000);
+
+            updateStatus();
+            updateCameras();
+        }
+
+        function landDrone() {
+            if (!droneTakeoffComplete) {
+                alert('⚠️ Drone is not in the air!');
+                return;
             }
-        }, 10000);
+
+            droneTakeoffComplete = false;
+
+            const statusEl = document.getElementById('droneStatus');
+            statusEl.className = 'drone-status online';
+            statusEl.textContent = '🟢 DRONE ONLINE - ON GROUND';
+
+            document.getElementById('landBtn').disabled = true;
+            document.getElementById('landBtn').style.opacity = '0.5';
+
+            mosquitoMarkers.forEach(m => {
+                if (map) map.removeLayer(m);
+            });
+            mosquitoMarkers = [];
+            document.getElementById("detections").textContent = "--";
+
+            if (droneMarker && map) {
+                const center = map.getCenter();
+                droneMarker.setLatLng([center.lat + 0.003, center.lng + 0.003]);
+                droneMarker.bindPopup('🔵 Drone on Ground - Ready for Takeoff');
+            }
+
+            if (window.detectionInterval) {
+                clearInterval(window.detectionInterval);
+                window.detectionInterval = null;
+            }
+
+            updateStatus();
+            updateCameras();
+        }
 
         // ===== AUTH LOGIC =====
-        let authMode = localStorage.getItem("authMode") || "guest";
-
         function updateAuthUI() {
             const connectBtn = document.getElementById("connectDroneBtn");
             const takeoffBtn = document.getElementById("takeoffBtn");
             const landBtn = document.getElementById("landBtn");
 
-            if (authMode === "pilot") {
-                droneOnline = true;
+            if (authMode === "pilot" && droneConnected && droneOnline) {
                 connectBtn.style.display = "none";
                 takeoffBtn.disabled = false;
-                landBtn.disabled = false;
                 takeoffBtn.style.opacity = "1";
-                landBtn.style.opacity = "1";
+                landBtn.disabled = true;
+                landBtn.style.opacity = "0.5";
+
+                if (!droneMarker && map && mapInitialized) {
+                    addDroneMarker();
+                }
+
                 updateStatus();
                 updateCameras();
+            } else if (authMode === "pilot" && !droneOnline) {
+                connectBtn.style.display = "none";
+                takeoffBtn.disabled = true;
+                takeoffBtn.style.opacity = "0.5";
+                landBtn.disabled = true;
+                landBtn.style.opacity = "0.5";
 
-                // Add drone marker and mosquito sites if map is initialized
-                if (map && mapInitialized) {
-                    // Add drone marker if not exists
-                    if (!droneMarker) {
-                        const center = map.getCenter();
-                        droneMarker = L.marker([center.lat + 0.005, center.lng + 0.005], {
-                            icon: createBlueIcon()
-                        }).addTo(map);
-                        droneMarker.bindPopup('🔵 Drone Location');
-                    }
-                    // Add mosquito sites
-                    addMosquitoSites();
-                }
+                const statusEl = document.getElementById('droneStatus');
+                statusEl.className = 'drone-status error';
+                statusEl.textContent = '❌ DRONE NOT SETUP - Drone is powered off';
             } else {
                 droneOnline = false;
+                droneConnected = false;
+                droneTakeoffComplete = false;
                 connectBtn.style.display = "block";
                 takeoffBtn.disabled = true;
                 landBtn.disabled = true;
                 takeoffBtn.style.opacity = "0.5";
                 landBtn.style.opacity = "0.5";
-                updateStatus();
-                updateCameras();
 
-                // Remove drone marker and mosquito markers when offline
+                const statusEl = document.getElementById('droneStatus');
+                statusEl.className = 'drone-status offline';
+                statusEl.textContent = '🔴 DRONE OFFLINE';
+
                 if (droneMarker && map) {
                     map.removeLayer(droneMarker);
                     droneMarker = null;
@@ -701,7 +899,17 @@
                 });
                 mosquitoMarkers = [];
                 document.getElementById("detections").textContent = "--";
+
+                if (window.detectionInterval) {
+                    clearInterval(window.detectionInterval);
+                    window.detectionInterval = null;
+                }
+
+                updateStatus();
+                updateCameras();
             }
+
+            updateWifiStatus();
         }
 
         // Show connect page
@@ -714,7 +922,7 @@
             setTimeout(() => document.getElementById("piCodeInput").focus(), 100);
         }
 
-        // Hide connect page (go back)
+        // Hide connect page
         function hideConnectPage() {
             document.getElementById("connectPage").classList.remove("show");
             document.getElementById("piCodeInput").value = "";
@@ -722,8 +930,10 @@
             document.getElementById("successMsg").classList.remove("show");
         }
 
-        // Handle connect
-        function handleConnect() {
+        // Handle connect - checks code AND drone online status
+        async function handleConnect() {
+            if (isConnecting) return;
+
             const code = document.getElementById("piCodeInput").value.trim();
             const errorMsg = document.getElementById("errorMsg");
             const successMsg = document.getElementById("successMsg");
@@ -737,47 +947,46 @@
                 return;
             }
 
-            // In real implementation, this would check with the Pi
-            // For demo, "SKY-7F2K9P" is the correct code
-            if (code === "SKY-7F2K9P") {
-                successMsg.textContent = "✅ Correct code! Connecting...";
+            isConnecting = true;
+            document.getElementById("connectBtn").disabled = true;
+            document.getElementById("connectBtn").textContent = "CHECKING...";
+
+            const result = await checkPiCode(code);
+
+            if (result.success) {
+                successMsg.textContent = "✅ " + result.message;
                 successMsg.classList.add("show");
 
-                // Simulate connection delay
+                droneOnline = true;
+                droneConnected = true;
+                authMode = "pilot";
+                localStorage.setItem("authMode", "pilot");
+                localStorage.setItem("piCode", code);
+
                 setTimeout(() => {
-                    authMode = "pilot";
-                    localStorage.setItem("authMode", "pilot");
-                    localStorage.setItem("piCode", code);
                     updateAuthUI();
                     hideConnectPage();
-                    alert("✅ Connected to SKYHAWK!");
-                }, 1500);
+                    if (map && mapInitialized) {
+                        addDroneMarker();
+                    }
+                    isConnecting = false;
+                    document.getElementById("connectBtn").disabled = false;
+                    document.getElementById("connectBtn").textContent = "CONNECT";
+                }, 1000);
             } else {
-                errorMsg.textContent = "✗ Incorrect code. Please try again.";
+                errorMsg.textContent = result.message;
                 errorMsg.classList.add("show");
                 document.getElementById("piCodeInput").value = "";
                 document.getElementById("piCodeInput").focus();
+                isConnecting = false;
+                document.getElementById("connectBtn").disabled = false;
+                document.getElementById("connectBtn").textContent = "CONNECT";
             }
         }
 
-        // Button handlers
-        document.getElementById("takeoffBtn").addEventListener("click", () => {
-            if (authMode !== "pilot") {
-                alert("🔒 Connect to a drone first!");
-                return;
-            }
-            console.log("TAKEOFF COMMAND SENT");
-            alert("✅ Takeoff command sent to SKYHAWK!");
-        });
-
-        document.getElementById("landBtn").addEventListener("click", () => {
-            if (authMode !== "pilot") {
-                alert("🔒 Connect to a drone first!");
-                return;
-            }
-            console.log("LAND COMMAND SENT");
-            alert("✅ Land command sent to SKYHAWK!");
-        });
+        // ===== BUTTON HANDLERS =====
+        document.getElementById("takeoffBtn").addEventListener("click", takeOffDrone);
+        document.getElementById("landBtn").addEventListener("click", landDrone);
 
         document.getElementById("logoutBtn").addEventListener("click", () => {
             localStorage.removeItem("authMode");
@@ -785,16 +994,10 @@
             window.location.href = "index.html";
         });
 
-        // Connect button - shows the connect page
         document.getElementById("connectDroneBtn").addEventListener("click", showConnectPage);
-
-        // Back button - returns to dashboard
         document.getElementById("backBtn").addEventListener("click", hideConnectPage);
-
-        // Connect button on the connect page
         document.getElementById("connectBtn").addEventListener("click", handleConnect);
 
-        // Enter key support on connect page
         document.getElementById("piCodeInput").addEventListener("keydown", function (e) {
             if (e.key === "Enter") {
                 handleConnect();
@@ -804,19 +1007,23 @@
             }
         });
 
-        // Close connect page on backdrop click
         document.getElementById("connectPage").addEventListener("click", function (e) {
             if (e.target === this) {
                 hideConnectPage();
             }
         });
 
-        // Init
+        // ===== INIT =====
         updateAuthUI();
 
-        // Initialize map when page loads
+        // Check Wi-Fi connection every 5 seconds
+        checkWiFiConnection();
+        setInterval(checkWiFiConnection, 5000);
+
         window.addEventListener('load', function () {
             setTimeout(initMap, 500);
+            // Start checking for drone status after map loads
+            setTimeout(checkDroneStatusFromPi, 2000);
         });
     </script>
 

@@ -39,6 +39,18 @@
             color: white;
             cursor: pointer;
         }
+
+        /* ADDED: Error message style */
+        #error-message {
+            color: #ff6b6b;
+            margin-top: 10px;
+            font-size: 14px;
+            display: none;
+        }
+
+        #error-message.show {
+            display: block;
+        }
     </style>
 </head>
 
@@ -50,32 +62,59 @@
         <!-- PASSWORD INPUT -->
         <input type="password" id="password" placeholder="Enter Password">
 
-        <!-- NEW: PI CODE INPUT -->
+        <!-- PI CODE INPUT -->
         <input type="text" id="piCode" placeholder="Enter Drone Code (optional)">
 
         <button onclick="login()">Login</button>
+
+        <!-- ADDED: Error message -->
+        <div id="error-message">Incorrect code. Please try again.</div>
     </div>
 
     <script>
         function login() {
             const pass = document.getElementById("password").value;
             const code = document.getElementById("piCode").value.trim();
+            const errorMsg = document.getElementById("error-message");
 
-            if (pass === "Maggy") {
+            // Hide error message
+            errorMsg.classList.remove("show");
 
-                // Save or clear Pi code
-                if (code !== "") {
-                    localStorage.setItem("piCode", code);
-                } else {
-                    localStorage.removeItem("piCode");
-                }
-
-                window.location.href = "dashboard.html";
-
-            } else {
+            // Password check - unchanged
+            if (pass !== "Maggy") {
                 alert("Incorrect password");
+                return;
+            }
+
+            // CHANGED: If NO code is entered → Guest mode
+            if (code === "") {
+                localStorage.setItem("authMode", "guest");
+                localStorage.removeItem("piCode");
+                window.location.href = "dashboard.html";
+                return;
+            }
+
+            // CHANGED: If code IS entered → Verify it
+            // In real implementation, this would check with the Pi
+            // For demo, "SKY-7F2K9P" is the correct code
+            if (code === "SKY-7F2K9P") {
+                localStorage.setItem("authMode", "pilot");
+                localStorage.setItem("piCode", code);
+                window.location.href = "dashboard.html";
+            } else {
+                // ADDED: Wrong code - show error message
+                errorMsg.classList.add("show");
+                document.getElementById("piCode").value = "";
+                document.getElementById("piCode").focus();
             }
         }
+
+        // ADDED: Allow Enter key to submit
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
     </script>
 
 </body>

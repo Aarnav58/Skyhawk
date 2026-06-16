@@ -46,16 +46,32 @@
 
     <div id="login-box">
         <h2>Skyhawk Login</h2>
+
+        <!-- PASSWORD INPUT -->
         <input type="password" id="password" placeholder="Enter Password">
+
+        <!-- NEW: PI CODE INPUT -->
+        <input type="text" id="piCode" placeholder="Enter Drone Code (optional)">
+
         <button onclick="login()">Login</button>
     </div>
 
     <script>
         function login() {
             const pass = document.getElementById("password").value;
+            const code = document.getElementById("piCode").value.trim();
 
             if (pass === "Maggy") {
+
+                // Save or clear Pi code
+                if (code !== "") {
+                    localStorage.setItem("piCode", code);
+                } else {
+                    localStorage.removeItem("piCode");
+                }
+
                 window.location.href = "dashboard.html";
+
             } else {
                 alert("Incorrect password");
             }

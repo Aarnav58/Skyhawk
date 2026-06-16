@@ -5,12 +5,198 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-    <!-- BUTTON STYLES -->
     <style>
+        /* -------------------- GENERAL -------------------- */
+
+        body {
+            background-color: #8179798e;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        h1 {
+            text-align: center;
+            color: #000000;
+            font-size: 58px;
+            margin: 0;
+            font-weight: 700;
+        }
+
+        /* -------------------- TOP BAR -------------------- */
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px;
+            background-color: #d9d9d9;
+            border-bottom: 2px solid #222;
+        }
+
+        .time,
+        .date {
+            font-size: 32px;
+            color: black;
+            font-weight: 700;
+        }
+
+        /* -------------------- ACCORDION -------------------- */
+
+        .accordion {
+            width: 90%;
+            margin: 20px auto;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .accordion-header {
+            background-color: #d9d9d9;
+            color: black;
+            padding: 20px;
+            cursor: pointer;
+            font-size: 28px;
+        }
+
+        .accordion-content {
+            background-color: white;
+            padding: 20px;
+            display: none;
+        }
+
+        /* -------------------- STATUS ITEMS -------------------- */
+
+        .status-item {
+            font-size: 22px;
+            margin-bottom: 10px;
+        }
+
+        /* ===== AUTH STYLES ===== */
+
+        /* Connect Drone button */
+        #connectDroneBtn {
+            width: 90%;
+            margin: 20px auto;
+            display: block;
+            padding: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 12px;
+            border: none;
+            background: orange;
+            color: black;
+            cursor: pointer;
+        }
+
+        /* Connect page styles */
+        .connect-page {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .connect-page.show {
+            display: flex;
+        }
+
+        .connect-container {
+            background: #2e2e2e;
+            padding: 50px;
+            border-radius: 16px;
+            text-align: center;
+            width: 400px;
+            color: white;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+        }
+
+        .connect-container h2 {
+            color: white;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .connect-container .sub {
+            color: #aaa;
+            font-size: 16px;
+            margin-bottom: 25px;
+        }
+
+        .connect-container input {
+            width: 90%;
+            padding: 14px;
+            font-size: 18px;
+            border-radius: 8px;
+            border: none;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .connect-container .error-msg {
+            color: #ff6b6b;
+            margin-bottom: 15px;
+            font-size: 16px;
+            display: none;
+        }
+
+        .connect-container .error-msg.show {
+            display: block;
+        }
+
+        .connect-container .success-msg {
+            color: #4caf50;
+            margin-bottom: 15px;
+            font-size: 16px;
+            display: none;
+        }
+
+        .connect-container .success-msg.show {
+            display: block;
+        }
+
+        .connect-container .actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .connect-container .actions button {
+            padding: 12px 40px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .connect-container .actions .primary {
+            background: #4caf50;
+            color: white;
+        }
+
+        .connect-container .actions .primary:hover {
+            background: #45a049;
+        }
+
+        .connect-container .actions .secondary {
+            background: #666;
+            color: white;
+        }
+
+        .connect-container .actions .secondary:hover {
+            background: #555;
+        }
+
+        /* Flight controls */
         .flight-controls {
             width: 100%;
             display: flex;
@@ -42,100 +228,196 @@
             color: white;
         }
 
-        /* NEW: Connect Drone button */
-        #connectDroneBtn {
-            width: 90%;
-            margin: 20px auto;
-            display: block;
-            padding: 12px;
-            font-size: 18px;
+        .takeoff:disabled,
+        .land:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Camera box */
+        .camera-box {
+            width: 100%;
+            height: 300px;
+            background: black;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        /* Custom marker styles */
+        .green-marker {
+            background: #00ff00;
+            border-radius: 50%;
+            border: 3px solid #008800;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
             font-weight: bold;
-            border-radius: 12px;
-            border: none;
-            background: orange;
             color: black;
-            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
+        }
+
+        .blue-marker {
+            background: #0088ff;
+            border-radius: 50%;
+            border: 3px solid #0044aa;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 0 15px rgba(0, 136, 255, 0.6);
+        }
+
+        .red-marker {
+            background: #ff0000;
+            border-radius: 50%;
+            border: 3px solid #aa0000;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+        }
+
+        .marker-label {
+            font-size: 10px;
+            font-weight: bold;
+            margin-top: -5px;
         }
     </style>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "YOUR_KEY",
+            authDomain: "YOUR_DOMAIN",
+            databaseURL: "YOUR_DB_URL",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_BUCKET",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+    </script>
+
 </head>
 
 <body>
-    <div class="topbar">
-        <div class="time">TIME</div>
-        <h1>Skyhawk Dashboard</h1>
-        <div class="date">DATE</div>
+    <!-- MAIN DASHBOARD -->
+    <div id="mainDashboard">
+        <div class="topbar">
+            <div class="time">TIME</div>
+            <h1>Skyhawk Dashboard</h1>
+            <div class="date">DATE</div>
+        </div>
+
+        <!-- TAKEOFF / LOGOUT / LAND BUTTONS -->
+        <div class="flight-controls">
+            <button id="takeoffBtn" class="takeoff">Take Off</button>
+            <button id="logoutBtn" class="logout">Log Out</button>
+            <button id="landBtn" class="land">Land</button>
+        </div>
+
+        <!-- CONNECT DRONE BUTTON -->
+        <button id="connectDroneBtn">Connect Drone</button>
+
+        <script>
+            function updateTime() {
+                const now = new Date();
+                document.querySelector('.time').textContent = now.toLocaleTimeString();
+                document.querySelector('.date').textContent = now.toLocaleDateString();
+            }
+
+            setInterval(updateTime, 1000);
+            updateTime();
+        </script>
+
+        <div class="accordion">
+            <div class="accordion-header">
+                <h2>Status</h2>
+            </div>
+
+            <div class="accordion-content">
+                <div class="status-item"><strong>Battery:</strong> <span id="battery">--</span></div>
+                <div class="status-item"><strong>Time Left in Air:</strong> <span id="airTime">--</span></div>
+                <div class="status-item"><strong>Mission Time Left:</strong> <span id="missionTime">--</span></div>
+                <div class="status-item"><strong>Emergency Landing:</strong> <span id="emergency">--</span></div>
+                <div class="status-item"><strong>Drone Location:</strong> <span id="droneLocation">--</span></div>
+                <div class="status-item"><strong>Locations Detected:</strong> <span id="detections">--</span></div>
+                <div class="status-item"><strong>Sensors:</strong> <span id="sensors">--</span></div>
+            </div>
+        </div>
+
+        <div class="accordion">
+            <div class="accordion-header">
+                <h2>Map</h2>
+            </div>
+
+            <div class="accordion-content">
+                <div id="map" style="width:100%; height:400px;"></div>
+            </div>
+        </div>
+
+        <div class="accordion">
+            <div class="accordion-header">
+                <h2>Camera 1</h2>
+            </div>
+
+            <div class="accordion-content">
+                <div id="cam1" class="camera-box">Device Offline</div>
+            </div>
+        </div>
+
+        <div class="accordion">
+            <div class="accordion-header">
+                <h2>Camera 2</h2>
+            </div>
+
+            <div class="accordion-content">
+                <div id="cam2" class="camera-box">Device Offline</div>
+            </div>
+        </div>
     </div>
 
-    <!-- TAKEOFF / LOGOUT / LAND BUTTONS -->
-    <div class="flight-controls">
-        <button id="takeoffBtn" class="takeoff">Take Off</button>
-        <button id="logoutBtn" class="logout">Log Out</button>
-        <button id="landBtn" class="land">Land</button>
-    </div>
+    <!-- CONNECT PAGE (overlay) -->
+    <div class="connect-page" id="connectPage">
+        <div class="connect-container">
+            <h2>🔗 CONNECT DRONE</h2>
+            <div class="sub">Enter the Pi code to take control</div>
 
-    <!-- NEW: CONNECT DRONE BUTTON (only shows if no Pi code) -->
-    <button id="connectDroneBtn">Connect Drone</button>
+            <div class="error-msg" id="errorMsg">✗ Incorrect code. Please try again.</div>
+            <div class="success-msg" id="successMsg">✅ Correct code! Connecting...</div>
 
-    <script>
-        function updateTime() {
-            const now = new Date();
-            document.querySelector('.time').textContent = now.toLocaleTimeString();
-            document.querySelector('.date').textContent = now.toLocaleDateString();
-        }
+            <input type="text" id="piCodeInput" placeholder="e.g. SKY-7F2K9P" autocomplete="off">
 
-        setInterval(updateTime, 1000);
-        updateTime();
-    </script>
-
-    <div class="accordion">
-        <div class="accordion-header">
-            <h2>Status</h2>
-        </div>
-
-        <div class="accordion-content">
-            <div class="status-item"><strong>Battery:</strong> <span id="battery">--</span></div>
-            <div class="status-item"><strong>Time Left in Air:</strong> <span id="airTime">--</span></div>
-            <div class="status-item"><strong>Mission Time Left:</strong> <span id="missionTime">--</span></div>
-            <div class="status-item"><strong>Emergency Landing:</strong> <span id="emergency">--</span></div>
-            <div class="status-item"><strong>Drone Location:</strong> <span id="droneLocation">--</span></div>
-            <div class="status-item"><strong>Locations Detected:</strong> <span id="detections">--</span></div>
-            <div class="status-item"><strong>Sensors:</strong> <span id="sensors">--</span></div>
-        </div>
-    </div>
-
-    <div class="accordion">
-        <div class="accordion-header">
-            <h2>Map</h2>
-        </div>
-
-        <div class="accordion-content">
-            <div id="map" style="width:100%; height:400px;"></div>
-        </div>
-    </div>
-
-    <div class="accordion">
-        <div class="accordion-header">
-            <h2>Camera 1</h2>
-        </div>
-
-        <div class="accordion-content">
-            <div id="cam1" class="camera-box">Device Offline</div>
-        </div>
-    </div>
-
-    <div class="accordion">
-        <div class="accordion-header">
-            <h2>Camera 2</h2>
-        </div>
-
-        <div class="accordion-content">
-            <div id="cam2" class="camera-box">Device Offline</div>
+            <div class="actions">
+                <button class="secondary" id="backBtn">BACK</button>
+                <button class="primary" id="connectBtn">CONNECT</button>
+            </div>
         </div>
     </div>
 
     <script>
         let droneOnline = false;
         let detectionCount = 0;
+        let mosquitoSites = [];
 
         function updateStatus() {
             if (!droneOnline) {
@@ -156,13 +438,12 @@
             document.getElementById("droneLocation").textContent = "39.02, -104.82";
             document.getElementById("detections").textContent = detectionCount;
             document.getElementById("sensors").textContent = "Normal";
-            setInterval(updateStatus, 1000);
         }
 
         updateStatus();
-    </script>
+        setInterval(updateStatus, 1000);
 
-    <script>
+        // Accordion toggle
         document.querySelectorAll('.accordion-header').forEach(header => {
             header.addEventListener('click', () => {
                 const content = header.nextElementSibling;
@@ -179,11 +460,8 @@
                 }
             });
         });
-    </script>
 
-    <script>
-        let droneOnline = false;
-
+        // Cameras
         function updateCameras() {
             const cam1 = document.getElementById("cam1");
             const cam2 = document.getElementById("cam2");
@@ -208,12 +486,40 @@
 
         setInterval(updateCameras, 1000);
         updateCameras();
-    </script>
 
-    <script>
+        // ===== MAP WITH MARKERS =====
         let map = null;
-        let deviceMarker = null;
+        let computerMarker = null;
+        let droneMarker = null;
+        let mosquitoMarkers = [];
         let mapInitialized = false;
+
+        function createGreenIcon() {
+            return L.divIcon({
+                className: 'green-marker',
+                html: '💻',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+        }
+
+        function createBlueIcon() {
+            return L.divIcon({
+                className: 'blue-marker',
+                html: '🛸',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+        }
+
+        function createRedIcon() {
+            return L.divIcon({
+                className: 'red-marker',
+                html: '🦟',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+        }
 
         function initMap() {
             if (mapInitialized) return;
@@ -222,7 +528,7 @@
             map = L.map('map', {
                 worldCopyJump: false,
                 maxBoundsViscosity: 1.0
-            }).setView([20, 0], 2);
+            }).setView([39.02, -104.82], 15);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
@@ -230,53 +536,287 @@
                 bounds: [[-85, -180], [85, 180]]
             }).addTo(map);
 
+            // Get computer location - GREEN MARKER
             navigator.geolocation.watchPosition(pos => {
                 const lat = pos.coords.latitude;
                 const lng = pos.coords.longitude;
 
-                if (!deviceMarker) {
-                    deviceMarker = L.marker([lat, lng]).addTo(map);
+                if (!computerMarker) {
+                    computerMarker = L.marker([lat, lng], {
+                        icon: createGreenIcon()
+                    }).addTo(map);
+                    computerMarker.bindPopup('🟢 Computer Location');
                     map.setView([lat, lng], 17);
                 } else {
-                    deviceMarker.setLatLng([lat, lng]);
+                    computerMarker.setLatLng([lat, lng]);
+                }
+
+                // If drone is online, show drone marker - BLUE MARKER
+                if (droneOnline && !droneMarker) {
+                    droneMarker = L.marker([lat + 0.005, lng + 0.005], {
+                        icon: createBlueIcon()
+                    }).addTo(map);
+                    droneMarker.bindPopup('🔵 Drone Location');
                 }
 
             }, err => {
                 console.log("GEO ERROR:", err);
+                // Fallback location
+                if (!computerMarker) {
+                    computerMarker = L.marker([39.02, -104.82], {
+                        icon: createGreenIcon()
+                    }).addTo(map);
+                    computerMarker.bindPopup('🟢 Computer Location');
+                }
             }, {
                 enableHighAccuracy: true,
                 maximumAge: 0,
                 timeout: 5000
             });
-        }
-    </script>
 
-    <!-- BUTTON LOGIC -->
-    <script>
+            // Add drone marker if online
+            if (droneOnline && !droneMarker) {
+                droneMarker = L.marker([39.025, -104.825], {
+                    icon: createBlueIcon()
+                }).addTo(map);
+                droneMarker.bindPopup('🔵 Drone Location');
+            }
+
+            // Add mosquito detection sites - RED MARKERS
+            if (droneOnline) {
+                addMosquitoSites();
+            }
+        }
+
+        function addMosquitoSites() {
+            // Clear old mosquito markers
+            mosquitoMarkers.forEach(m => {
+                if (map) map.removeLayer(m);
+            });
+            mosquitoMarkers = [];
+
+            // Random mosquito detection sites (simulated)
+            const baseLat = 39.02;
+            const baseLng = -104.82;
+            const sites = [];
+
+            // Generate 3-7 random sites
+            const numSites = Math.floor(Math.random() * 5) + 3;
+            for (let i = 0; i < numSites; i++) {
+                const lat = baseLat + (Math.random() - 0.5) * 0.03;
+                const lng = baseLng + (Math.random() - 0.5) * 0.03;
+                sites.push({ lat, lng });
+            }
+
+            sites.forEach(site => {
+                const marker = L.marker([site.lat, site.lng], {
+                    icon: createRedIcon()
+                }).addTo(map);
+                marker.bindPopup(`🔴 Mosquito Detection Site #${mosquitoMarkers.length + 1}`);
+                mosquitoMarkers.push(marker);
+            });
+
+            detectionCount = mosquitoMarkers.length;
+            document.getElementById("detections").textContent = detectionCount;
+        }
+
+        // Simulate mosquito detections every 10 seconds when drone is online
+        setInterval(() => {
+            if (droneOnline && map && mapInitialized) {
+                // Randomly move drone slightly
+                if (droneMarker) {
+                    const currentPos = droneMarker.getLatLng();
+                    const newLat = currentPos.lat + (Math.random() - 0.5) * 0.002;
+                    const newLng = currentPos.lng + (Math.random() - 0.5) * 0.002;
+                    droneMarker.setLatLng([newLat, newLng]);
+                    droneMarker.bindPopup(`🔵 Drone Location<br>Lat: ${newLat.toFixed(5)}<br>Lng: ${newLng.toFixed(5)}`);
+                }
+
+                // Add new mosquito detection site
+                if (droneMarker) {
+                    const dronePos = droneMarker.getLatLng();
+                    const lat = dronePos.lat + (Math.random() - 0.5) * 0.005;
+                    const lng = dronePos.lng + (Math.random() - 0.5) * 0.005;
+
+                    const marker = L.marker([lat, lng], {
+                        icon: createRedIcon()
+                    }).addTo(map);
+                    marker.bindPopup(`🔴 Mosquito Detection Site #${mosquitoMarkers.length + 1}`);
+                    mosquitoMarkers.push(marker);
+
+                    detectionCount = mosquitoMarkers.length;
+                    document.getElementById("detections").textContent = detectionCount;
+                }
+            }
+        }, 10000);
+
+        // ===== AUTH LOGIC =====
+        let authMode = localStorage.getItem("authMode") || "guest";
+
+        function updateAuthUI() {
+            const connectBtn = document.getElementById("connectDroneBtn");
+            const takeoffBtn = document.getElementById("takeoffBtn");
+            const landBtn = document.getElementById("landBtn");
+
+            if (authMode === "pilot") {
+                droneOnline = true;
+                connectBtn.style.display = "none";
+                takeoffBtn.disabled = false;
+                landBtn.disabled = false;
+                takeoffBtn.style.opacity = "1";
+                landBtn.style.opacity = "1";
+                updateStatus();
+                updateCameras();
+
+                // Add drone marker and mosquito sites if map is initialized
+                if (map && mapInitialized) {
+                    // Add drone marker if not exists
+                    if (!droneMarker) {
+                        const center = map.getCenter();
+                        droneMarker = L.marker([center.lat + 0.005, center.lng + 0.005], {
+                            icon: createBlueIcon()
+                        }).addTo(map);
+                        droneMarker.bindPopup('🔵 Drone Location');
+                    }
+                    // Add mosquito sites
+                    addMosquitoSites();
+                }
+            } else {
+                droneOnline = false;
+                connectBtn.style.display = "block";
+                takeoffBtn.disabled = true;
+                landBtn.disabled = true;
+                takeoffBtn.style.opacity = "0.5";
+                landBtn.style.opacity = "0.5";
+                updateStatus();
+                updateCameras();
+
+                // Remove drone marker and mosquito markers when offline
+                if (droneMarker && map) {
+                    map.removeLayer(droneMarker);
+                    droneMarker = null;
+                }
+                mosquitoMarkers.forEach(m => {
+                    if (map) map.removeLayer(m);
+                });
+                mosquitoMarkers = [];
+                document.getElementById("detections").textContent = "--";
+            }
+        }
+
+        // Show connect page
+        function showConnectPage() {
+            if (authMode === "pilot") return;
+            document.getElementById("connectPage").classList.add("show");
+            document.getElementById("piCodeInput").value = "";
+            document.getElementById("errorMsg").classList.remove("show");
+            document.getElementById("successMsg").classList.remove("show");
+            setTimeout(() => document.getElementById("piCodeInput").focus(), 100);
+        }
+
+        // Hide connect page (go back)
+        function hideConnectPage() {
+            document.getElementById("connectPage").classList.remove("show");
+            document.getElementById("piCodeInput").value = "";
+            document.getElementById("errorMsg").classList.remove("show");
+            document.getElementById("successMsg").classList.remove("show");
+        }
+
+        // Handle connect
+        function handleConnect() {
+            const code = document.getElementById("piCodeInput").value.trim();
+            const errorMsg = document.getElementById("errorMsg");
+            const successMsg = document.getElementById("successMsg");
+
+            errorMsg.classList.remove("show");
+            successMsg.classList.remove("show");
+
+            if (code === "") {
+                errorMsg.textContent = "✗ Please enter a code.";
+                errorMsg.classList.add("show");
+                return;
+            }
+
+            // In real implementation, this would check with the Pi
+            // For demo, "SKY-7F2K9P" is the correct code
+            if (code === "SKY-7F2K9P") {
+                successMsg.textContent = "✅ Correct code! Connecting...";
+                successMsg.classList.add("show");
+
+                // Simulate connection delay
+                setTimeout(() => {
+                    authMode = "pilot";
+                    localStorage.setItem("authMode", "pilot");
+                    localStorage.setItem("piCode", code);
+                    updateAuthUI();
+                    hideConnectPage();
+                    alert("✅ Connected to SKYHAWK!");
+                }, 1500);
+            } else {
+                errorMsg.textContent = "✗ Incorrect code. Please try again.";
+                errorMsg.classList.add("show");
+                document.getElementById("piCodeInput").value = "";
+                document.getElementById("piCodeInput").focus();
+            }
+        }
+
+        // Button handlers
         document.getElementById("takeoffBtn").addEventListener("click", () => {
+            if (authMode !== "pilot") {
+                alert("🔒 Connect to a drone first!");
+                return;
+            }
             console.log("TAKEOFF COMMAND SENT");
+            alert("✅ Takeoff command sent to SKYHAWK!");
         });
 
         document.getElementById("landBtn").addEventListener("click", () => {
+            if (authMode !== "pilot") {
+                alert("🔒 Connect to a drone first!");
+                return;
+            }
             console.log("LAND COMMAND SENT");
+            alert("✅ Land command sent to SKYHAWK!");
         });
 
         document.getElementById("logoutBtn").addEventListener("click", () => {
+            localStorage.removeItem("authMode");
+            localStorage.removeItem("piCode");
             window.location.href = "index.html";
         });
 
-        // NEW: Connect Drone button logic
-        const piCode = localStorage.getItem("piCode");
-        const connectBtn = document.getElementById("connectDroneBtn");
+        // Connect button - shows the connect page
+        document.getElementById("connectDroneBtn").addEventListener("click", showConnectPage);
 
-        if (piCode) {
-            connectBtn.style.display = "none"; // hide if code exists
-        } else {
-            connectBtn.style.display = "block"; // show if no code
-        }
+        // Back button - returns to dashboard
+        document.getElementById("backBtn").addEventListener("click", hideConnectPage);
 
-        connectBtn.addEventListener("click", () => {
-            alert("Enter a Pi code on the login page to connect a drone.");
+        // Connect button on the connect page
+        document.getElementById("connectBtn").addEventListener("click", handleConnect);
+
+        // Enter key support on connect page
+        document.getElementById("piCodeInput").addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+                handleConnect();
+            }
+            if (e.key === "Escape") {
+                hideConnectPage();
+            }
+        });
+
+        // Close connect page on backdrop click
+        document.getElementById("connectPage").addEventListener("click", function (e) {
+            if (e.target === this) {
+                hideConnectPage();
+            }
+        });
+
+        // Init
+        updateAuthUI();
+
+        // Initialize map when page loads
+        window.addEventListener('load', function () {
+            setTimeout(initMap, 500);
         });
     </script>
 

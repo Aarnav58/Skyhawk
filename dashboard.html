@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>SKYHAWK Dashboard</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
@@ -72,6 +72,7 @@
         .status-item {
             font-size: 22px;
             margin-bottom: 10px;
+            color: black;
         }
 
         /* ===== AUTH STYLES ===== */
@@ -218,6 +219,11 @@
             color: white;
         }
 
+        .takeoff:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .logout {
             background-color: #007bff;
             color: white;
@@ -228,7 +234,6 @@
             color: white;
         }
 
-        .takeoff:disabled,
         .land:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -322,6 +327,79 @@
             background: #ff4444;
             color: white;
         }
+
+        .drone-status.emergency {
+            background: #ff0000;
+            color: white;
+            animation: blink 0.5s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        /* Map controls */
+        .map-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 10px 0;
+            align-items: center;
+        }
+
+        .map-controls button {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .btn-draw {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-draw.active {
+            background: #ff5722;
+        }
+
+        .btn-save {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-save:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-clear {
+            background: #ff5722;
+            color: white;
+        }
+
+        .area-status {
+            font-size: 14px;
+            color: #333;
+            padding: 5px 15px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+
+        .area-status.saved {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
     </style>
 
 </head>
@@ -367,6 +445,7 @@
             <div class="accordion-content">
                 <div class="status-item"><strong>Wi-Fi:</strong> <span id="wifiStatus">Checking...</span></div>
                 <div class="status-item"><strong>Battery:</strong> <span id="battery">--</span></div>
+                <div class="status-item"><strong>Altitude:</strong> <span id="altitude">--</span></div>
                 <div class="status-item"><strong>Time Left in Air:</strong> <span id="airTime">--</span></div>
                 <div class="status-item"><strong>Mission Time Left:</strong> <span id="missionTime">--</span></div>
                 <div class="status-item"><strong>Emergency Landing:</strong> <span id="emergency">--</span></div>
@@ -382,13 +461,21 @@
             </div>
 
             <div class="accordion-content">
+                <!-- Map Controls -->
+                <div class="map-controls">
+                    <button id="drawBtn" class="btn-draw">✏️ Draw Area</button>
+                    <button id="saveAreaBtn" class="btn-save" disabled>💾 Save Area</button>
+                    <button id="clearAreaBtn" class="btn-clear">🗑️ Clear</button>
+                    <span id="areaStatus" class="area-status">📍 No area selected</span>
+                </div>
+
                 <div id="map" style="width:100%; height:400px;"></div>
             </div>
         </div>
 
         <div class="accordion">
             <div class="accordion-header">
-                <h2>Camera 1</h2>
+                <h2>Camera 1 (Regular)</h2>
             </div>
 
             <div class="accordion-content">
@@ -398,7 +485,7 @@
 
         <div class="accordion">
             <div class="accordion-header">
-                <h2>Camera 2</h2>
+                <h2>Camera 2 (Thermal)</h2>
             </div>
 
             <div class="accordion-content">
@@ -431,137 +518,169 @@
         let droneOnline = false;
         let droneConnected = false;
         let droneTakeoffComplete = false;
+        let droneInEmergency = false;
         let detectionCount = 0;
         let isConnecting = false;
         let isOnSkyhawkWifi = false;
+        let missionArea = null;
+        let areaSaved = false;
+        let drawingMode = false;
+        let drawnPoints = [];
+        let statusData = {
+            battery: '--',
+            altitude: '--',
+            airTime: '--',
+            missionTime: '--',
+            emergency: '--',
+            location: '--',
+            sensors: '--'
+        };
+        let hasReceivedData = false;
 
         // ===== CHECK WIFI CONNECTION =====
         function checkWiFiConnection() {
-            // In a real implementation, you would:
-            // 1. Check if you can reach the Pi at 192.168.4.188
-            // 2. Or check the network name using the Network Information API
+            const wifiStatus = document.getElementById('wifiStatus');
 
-            // For now, we'll try to fetch from the Pi
-            // If it succeeds, we're on the SKYHAWK network
             fetch('http://192.168.4.188/ping', {
-                method: 'GET',
+                method: 'HEAD',
                 mode: 'no-cors',
                 cache: 'no-cache',
                 timeout: 3000
             })
                 .then(() => {
                     isOnSkyhawkWifi = true;
-                    updateWifiStatus();
+                    wifiStatus.textContent = "✅ Connected to SKYHAWK";
+                    wifiStatus.style.color = "green";
+                    // Start listening for Pi data
+                    startPiDataListener();
                 })
                 .catch(() => {
                     isOnSkyhawkWifi = false;
-                    updateWifiStatus();
+                    wifiStatus.textContent = "❌ Not Connected to SKYHAWK";
+                    wifiStatus.style.color = "red";
                 });
         }
 
-        // ===== UPDATE WIFI STATUS =====
-        function updateWifiStatus() {
-            const wifiStatus = document.getElementById("wifiStatus");
+        // ===== LISTEN FOR PI DATA =====
+        function startPiDataListener() {
+            if (window.piDataInterval) return;
 
-            if (isOnSkyhawkWifi) {
-                if (authMode === "pilot") {
-                    wifiStatus.textContent = "✅ Connected to SKYHAWK (Authenticated)";
-                    wifiStatus.style.color = "green";
-                } else {
-                    wifiStatus.textContent = "📶 Connected to SKYHAWK (Not Authenticated)";
-                    wifiStatus.style.color = "orange";
+            // Poll Pi for status updates
+            window.piDataInterval = setInterval(() => {
+                if (isOnSkyhawkWifi && authMode === 'pilot') {
+                    fetchPiStatus();
                 }
-            } else {
-                wifiStatus.textContent = "❌ Not Connected to SKYHAWK";
-                wifiStatus.style.color = "red";
-            }
+            }, 3000);
         }
 
-        // ===== CHECK DRONE STATUS FROM PI =====
-        function checkDroneStatusFromPi() {
-            if (!isOnSkyhawkWifi) return;
-
+        function fetchPiStatus() {
             // In real implementation: fetch('http://192.168.4.188/status')
-            // For demo, we'll simulate after 5 seconds if authenticated
-            if (authMode === "pilot" && !droneOnline) {
-                setTimeout(() => {
-                    if (!droneOnline && authMode === "pilot" && isOnSkyhawkWifi) {
-                        droneOnline = true;
-                        droneConnected = true;
-                        updateAuthUI();
+            // For now, this is where the Pi data would come in
+            // The dashboard will update when REAL data arrives
+            console.log('📡 Fetching Pi status...');
+        }
 
-                        const statusEl = document.getElementById('droneStatus');
-                        statusEl.className = 'drone-status online';
-                        statusEl.textContent = '🟢 DRONE ONLINE - ON GROUND';
+        // ===== UPDATE STATUS FROM PI DATA =====
+        function updateStatusFromPi(data) {
+            // This function is called when Pi sends data
+            // In real implementation: WebSocket or fetch response
+            hasReceivedData = true;
 
-                        document.getElementById('takeoffBtn').disabled = false;
-                        document.getElementById('takeoffBtn').style.opacity = '1';
+            // Update status display
+            document.getElementById("battery").textContent = data.battery || statusData.battery;
+            document.getElementById("altitude").textContent = data.altitude || statusData.altitude;
+            document.getElementById("airTime").textContent = data.airTime || statusData.airTime;
+            document.getElementById("missionTime").textContent = data.missionTime || statusData.missionTime;
+            document.getElementById("emergency").textContent = data.emergency || statusData.emergency;
+            document.getElementById("droneLocation").textContent = data.location || statusData.location;
+            document.getElementById("sensors").textContent = data.sensors || statusData.sensors;
+            document.getElementById("detections").textContent = data.detections || detectionCount;
 
-                        if (map && mapInitialized) {
-                            addDroneMarker();
-                        }
+            // Update drone status
+            const statusEl = document.getElementById("droneStatus");
+            if (data.emergency === 'ACTIVE') {
+                droneInEmergency = true;
+                statusEl.className = 'drone-status emergency';
+                statusEl.textContent = '🚨 EMERGENCY - LANDING!';
+            } else if (data.status === 'flying') {
+                statusEl.className = 'drone-status online';
+                statusEl.textContent = '🛸 DRONE FLYING - MISSION ACTIVE';
+            } else if (data.status === 'ground') {
+                statusEl.className = 'drone-status online';
+                statusEl.textContent = '🟢 DRONE ONLINE - ON GROUND';
+            }
 
-                        updateStatus();
-                        updateCameras();
+            // Update drone marker if location changed
+            if (data.location && droneMarker && map) {
+                const parts = data.location.split(',');
+                if (parts.length === 2) {
+                    const lat = parseFloat(parts[0]);
+                    const lng = parseFloat(parts[1]);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        droneMarker.setLatLng([lat, lng]);
                     }
-                }, 5000);
+                }
+            }
+
+            // Update detection markers
+            if (data.detections && data.detections.length > 0) {
+                data.detections.forEach(det => {
+                    addMosquitoDetection(det.lat, det.lng);
+                });
             }
         }
 
-        // ===== SIMULATE Pi CHECKING CODE =====
-        function checkPiCode(code) {
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    // First check if we're on SKYHAWK Wi-Fi
-                    if (!isOnSkyhawkWifi) {
-                        resolve({
-                            success: false,
-                            message: "❌ Not connected to SKYHAWK Wi-Fi. Please connect to the drone's network.",
-                            droneOnline: false
-                        });
-                        return;
-                    }
+        // ===== SIMULATE PI SENDING DATA =====
+        // This is ONLY for demo purposes - in real implementation, this would be replaced with actual Pi data
+        function simulatePiData() {
+            if (!isOnSkyhawkWifi || authMode !== 'pilot') return;
 
-                    const correctCode = "SKY-7F2K9P";
+            // This would be replaced with actual Pi data
+            // For now, it's a placeholder showing the structure
+            const mockData = {
+                status: droneTakeoffComplete ? 'flying' : 'ground',
+                battery: droneTakeoffComplete ? '82%' : '100%',
+                altitude: droneTakeoffComplete ? '25 ft' : '0 ft',
+                airTime: droneTakeoffComplete ? '8 min' : '0 min',
+                missionTime: droneTakeoffComplete ? '12 min' : '0 min',
+                emergency: 'NO',
+                location: droneMarker ?
+                    `${droneMarker.getLatLng().lat.toFixed(5)}, ${droneMarker.getLatLng().lng.toFixed(5)}` :
+                    '39.02, -104.82',
+                sensors: droneTakeoffComplete ? 'LiDAR: Active' : '--',
+                detections: detectionCount
+            };
 
-                    if (code !== correctCode) {
-                        resolve({
-                            success: false,
-                            message: "❌ Incorrect code. Please try again.",
-                            droneOnline: false
-                        });
-                    } else {
-                        // Code is correct - check if drone is online
-                        if (droneOnline) {
-                            resolve({
-                                success: true,
-                                message: "✅ Code verified! Drone is online.",
-                                droneOnline: true
-                            });
-                        } else {
-                            resolve({
-                                success: false,
-                                message: "❌ Drone not setup. Please power on the drone and try again.",
-                                droneOnline: false
-                            });
-                        }
-                    }
-                }, 1500);
-            });
+            // Only update if we have real data
+            if (hasReceivedData) {
+                updateStatusFromPi(mockData);
+            }
         }
 
         // ===== UPDATE UI =====
         function updateStatus() {
             const statusEl = document.getElementById("droneStatus");
 
+            if (droneInEmergency) {
+                statusEl.className = 'drone-status emergency';
+                statusEl.textContent = '🚨 EMERGENCY - LANDING!';
+                document.getElementById("takeoffBtn").disabled = true;
+                document.getElementById("landBtn").disabled = true;
+                return;
+            }
+
             if (!droneOnline || !droneConnected) {
-                document.getElementById("battery").textContent = "--";
-                document.getElementById("airTime").textContent = "--";
-                document.getElementById("missionTime").textContent = "--";
-                document.getElementById("emergency").textContent = "--";
-                document.getElementById("droneLocation").textContent = "--";
-                document.getElementById("detections").textContent = "--";
-                document.getElementById("sensors").textContent = "--";
+                // Only show "--" if no data has been received
+                if (!hasReceivedData) {
+                    document.getElementById("battery").textContent = "--";
+                    document.getElementById("altitude").textContent = "--";
+                    document.getElementById("airTime").textContent = "--";
+                    document.getElementById("missionTime").textContent = "--";
+                    document.getElementById("emergency").textContent = "--";
+                    document.getElementById("droneLocation").textContent = "--";
+                    document.getElementById("detections").textContent = "--";
+                    document.getElementById("sensors").textContent = "--";
+                }
 
                 if (authMode !== "pilot") {
                     statusEl.className = 'drone-status offline';
@@ -570,21 +689,41 @@
                 return;
             }
 
+            // If we have data from Pi, use it
+            if (hasReceivedData) {
+                // Data is updated via updateStatusFromPi()
+                return;
+            }
+
+            // Fallback display (only shown briefly before Pi data arrives)
             if (droneOnline && droneConnected && !droneTakeoffComplete) {
                 statusEl.className = 'drone-status online';
                 statusEl.textContent = '🟢 DRONE ONLINE - ON GROUND';
+                document.getElementById("takeoffBtn").disabled = false;
+                document.getElementById("takeoffBtn").style.opacity = "1";
+                document.getElementById("landBtn").disabled = true;
+                document.getElementById("landBtn").style.opacity = "0.5";
             } else if (droneOnline && droneConnected && droneTakeoffComplete) {
                 statusEl.className = 'drone-status online';
-                statusEl.textContent = '🛸 DRONE FLYING - IN AIR';
+                statusEl.textContent = '🛸 DRONE FLYING - MISSION ACTIVE';
+                document.getElementById("takeoffBtn").disabled = true;
+                document.getElementById("takeoffBtn").style.opacity = "0.5";
+                document.getElementById("landBtn").disabled = false;
+                document.getElementById("landBtn").style.opacity = "1";
             }
 
-            document.getElementById("battery").textContent = "87%";
-            document.getElementById("airTime").textContent = "12 min";
-            document.getElementById("missionTime").textContent = "4 min";
-            document.getElementById("emergency").textContent = "NO";
-            document.getElementById("droneLocation").textContent = "39.02, -104.82";
-            document.getElementById("detections").textContent = detectionCount;
-            document.getElementById("sensors").textContent = "Normal";
+            // Update Take Off button based on area saved
+            if (authMode === "pilot" && droneOnline && droneConnected && !droneTakeoffComplete) {
+                if (areaSaved) {
+                    document.getElementById("takeoffBtn").disabled = false;
+                    document.getElementById("takeoffBtn").style.opacity = "1";
+                    document.getElementById("takeoffBtn").textContent = "🛫 Take Off";
+                } else {
+                    document.getElementById("takeoffBtn").disabled = true;
+                    document.getElementById("takeoffBtn").style.opacity = "0.5";
+                    document.getElementById("takeoffBtn").textContent = "⚠️ Save Area First";
+                }
+            }
         }
 
         updateStatus();
@@ -599,8 +738,6 @@
                 content.style.display = isOpen ? "none" : "block";
 
                 if (!isOpen && header.querySelector('h2').textContent === "Map") {
-                    initMap();
-
                     setTimeout(() => {
                         if (map) map.invalidateSize();
                     }, 300);
@@ -624,11 +761,15 @@
                 return;
             }
 
-            cam1.innerHTML = `<img src="http://192.168.4.188/stream" style="width:100%; height:100%; object-fit:cover;">`;
+            cam1.innerHTML =
+                `<img src="http://192.168.4.188/stream" style="width:100%; height:100%; object-fit:cover; background: #1a1a2e;">`;
             cam1.style.background = "none";
+            cam1.style.color = "transparent";
 
-            cam2.innerHTML = `<img src="http://192.168.4.188/stream" style="width:100%; height:100%; object-fit:cover;">`;
+            cam2.innerHTML =
+                `<img src="http://192.168.4.188/thermal" style="width:100%; height:100%; object-fit:cover; background: #1a1a2e;">`;
             cam2.style.background = "none";
+            cam2.style.color = "transparent";
         }
 
         setInterval(updateCameras, 1000);
@@ -640,6 +781,8 @@
         let droneMarker = null;
         let mosquitoMarkers = [];
         let mapInitialized = false;
+        let drawnPolygon = null;
+        let drawnAreaPoints = [];
 
         function createGreenIcon() {
             return L.divIcon({
@@ -680,9 +823,13 @@
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 maxZoom: 19,
                 noWrap: true,
-                bounds: [[-85, -180], [85, 180]]
+                bounds: [
+                    [-85, -180],
+                    [85, 180]
+                ]
             }).addTo(map);
 
+            // Computer location - GREEN marker
             navigator.geolocation.watchPosition(pos => {
                 const lat = pos.coords.latitude;
                 const lng = pos.coords.longitude;
@@ -695,6 +842,14 @@
                     map.setView([lat, lng], 17);
                 } else {
                     computerMarker.setLatLng([lat, lng]);
+                }
+
+                // Add drone marker if online
+                if (droneOnline && !droneMarker) {
+                    droneMarker = L.marker([lat + 0.003, lng + 0.003], {
+                        icon: createBlueIcon()
+                    }).addTo(map);
+                    droneMarker.bindPopup('🔵 Drone on Ground - Ready');
                 }
 
             }, err => {
@@ -710,168 +865,192 @@
                 maximumAge: 0,
                 timeout: 5000
             });
+
+            // Setup drawing controls
+            setupDrawingControls();
         }
 
-        // ===== DRONE FUNCTIONS =====
-        function addDroneMarker() {
-            if (droneMarker && map) {
-                map.removeLayer(droneMarker);
-            }
-            if (map && mapInitialized && droneOnline) {
-                const center = map.getCenter();
-                droneMarker = L.marker([center.lat + 0.003, center.lng + 0.003], {
-                    icon: createBlueIcon()
-                }).addTo(map);
-                droneMarker.bindPopup('🔵 Drone on Ground - Ready for Takeoff');
-            }
+        // ===== DRAWING CONTROLS =====
+        let drawPolygon = null;
+
+        function setupDrawingControls() {
+            const drawBtn = document.getElementById('drawBtn');
+            const saveBtn = document.getElementById('saveAreaBtn');
+            const clearBtn = document.getElementById('clearAreaBtn');
+
+            drawBtn.addEventListener('click', () => {
+                if (drawingMode) {
+                    drawingMode = false;
+                    drawBtn.classList.remove('active');
+                    drawBtn.textContent = '✏️ Draw Area';
+                    if (drawPolygon) {
+                        map.removeControl(drawPolygon);
+                        drawPolygon = null;
+                    }
+                    map.off('click', addPointToPolygon);
+                } else {
+                    drawingMode = true;
+                    drawBtn.classList.add('active');
+                    drawBtn.textContent = '✋ Stop Drawing';
+
+                    if (drawnPolygon) {
+                        map.removeLayer(drawnPolygon);
+                        drawnPolygon = null;
+                    }
+                    drawnAreaPoints = [];
+
+                    // Click-to-draw polygon
+                    map.on('click', addPointToPolygon);
+                }
+            });
+
+            clearBtn.addEventListener('click', () => {
+                clearArea();
+                map.off('click', addPointToPolygon);
+                drawingMode = false;
+                drawBtn.classList.remove('active');
+                drawBtn.textContent = '✏️ Draw Area';
+            });
+
+            saveBtn.addEventListener('click', saveArea);
         }
 
-        function addMosquitoSites() {
-            mosquitoMarkers.forEach(m => {
-                if (map) map.removeLayer(m);
-            });
-            mosquitoMarkers = [];
+        function addPointToPolygon(e) {
+            if (!drawingMode) return;
 
-            const baseLat = 39.02;
-            const baseLng = -104.82;
-            const sites = [];
+            const latlng = e.latlng;
+            drawnAreaPoints.push([latlng.lat, latlng.lng]);
 
-            const numSites = Math.floor(Math.random() * 4) + 2;
-            for (let i = 0; i < numSites; i++) {
-                const lat = baseLat + (Math.random() - 0.5) * 0.02;
-                const lng = baseLng + (Math.random() - 0.5) * 0.02;
-                sites.push({ lat, lng });
+            if (drawnPolygon) {
+                map.removeLayer(drawnPolygon);
             }
 
-            sites.forEach((site, index) => {
-                const marker = L.marker([site.lat, site.lng], {
-                    icon: createRedIcon()
+            if (drawnAreaPoints.length > 2) {
+                drawnPolygon = L.polygon(drawnAreaPoints, {
+                    color: '#ff5722',
+                    weight: 3,
+                    fillColor: '#ff5722',
+                    fillOpacity: 0.2
                 }).addTo(map);
-                marker.bindPopup(`🔴 Mosquito Detection Site #${index + 1}`);
-                mosquitoMarkers.push(marker);
-            });
+            } else {
+                L.marker([latlng.lat, latlng.lng]).addTo(map);
+            }
+
+            if (drawnAreaPoints.length >= 3) {
+                document.getElementById('saveAreaBtn').disabled = false;
+            }
+
+            document.getElementById('areaStatus').textContent = `📍 ${drawnAreaPoints.length} points drawn`;
+            document.getElementById('areaStatus').className = 'area-status';
+        }
+
+        function saveArea() {
+            if (drawnAreaPoints.length < 3) {
+                alert('Please draw a polygon with at least 3 points.');
+                return;
+            }
+
+            if (!isOnSkyhawkWifi || !droneOnline) {
+                alert('⚠️ Drone not connected! Cannot save mission area.');
+                return;
+            }
+
+            missionArea = drawnAreaPoints;
+            areaSaved = true;
+
+            // Send to Pi
+            console.log('Mission Area Sent to Pi:', missionArea);
+            // In real: fetch('http://192.168.4.188/mission', { method: 'POST', body: JSON.stringify({ area: missionArea }) })
+
+            document.getElementById('areaStatus').textContent = `✅ Area saved! (${missionArea.length} points)`;
+            document.getElementById('areaStatus').className = 'area-status saved';
+
+            document.getElementById('takeoffBtn').disabled = false;
+            document.getElementById('takeoffBtn').style.opacity = "1";
+            document.getElementById('takeoffBtn').textContent = "🛫 Take Off";
+
+            if (drawnPolygon) {
+                drawnPolygon.setStyle({
+                    color: '#4caf50',
+                    fillColor: '#4caf50',
+                    fillOpacity: 0.2,
+                    weight: 4
+                });
+            }
+
+            alert('✅ Mission area saved! You can now press Take Off.');
+        }
+
+        function clearArea() {
+            missionArea = null;
+            areaSaved = false;
+            drawnAreaPoints = [];
+
+            if (drawnPolygon) {
+                map.removeLayer(drawnPolygon);
+                drawnPolygon = null;
+            }
+
+            document.getElementById('areaStatus').textContent = '📍 No area selected';
+            document.getElementById('areaStatus').className = 'area-status';
+            document.getElementById('saveAreaBtn').disabled = true;
+
+            document.getElementById('takeoffBtn').disabled = true;
+            document.getElementById('takeoffBtn').style.opacity = "0.5";
+            document.getElementById('takeoffBtn').textContent = "⚠️ Save Area First";
+        }
+
+        // ===== DETECTION FUNCTIONS =====
+        function addMosquitoDetection(lat, lng) {
+            if (!map || !mapInitialized) return;
+
+            const marker = L.marker([lat, lng], {
+                icon: createRedIcon()
+            }).addTo(map);
+            marker.bindPopup(`🔴 Mosquito Site #${mosquitoMarkers.length + 1}<br>Water detected + motion confirmed`);
+            mosquitoMarkers.push(marker);
 
             detectionCount = mosquitoMarkers.length;
             document.getElementById("detections").textContent = detectionCount;
-        }
-
-        function takeOffDrone() {
-            if (!droneConnected || !droneOnline) {
-                alert('⚠️ Drone is not online!');
-                return;
-            }
-
-            if (droneTakeoffComplete) {
-                alert('🛸 Drone is already in the air!');
-                return;
-            }
-
-            droneTakeoffComplete = true;
-
-            const statusEl = document.getElementById('droneStatus');
-            statusEl.className = 'drone-status online';
-            statusEl.textContent = '🛸 DRONE FLYING - IN AIR';
-
-            document.getElementById('landBtn').disabled = false;
-            document.getElementById('landBtn').style.opacity = '1';
-
-            if (droneMarker && map) {
-                const pos = droneMarker.getLatLng();
-                droneMarker.setLatLng([pos.lat + 0.005, pos.lng + 0.005]);
-                droneMarker.bindPopup('🔵 Drone in Flight');
-            }
-
-            addMosquitoSites();
-
-            if (window.detectionInterval) {
-                clearInterval(window.detectionInterval);
-            }
-            window.detectionInterval = setInterval(() => {
-                if (droneTakeoffComplete && droneMarker) {
-                    const currentPos = droneMarker.getLatLng();
-                    const newLat = currentPos.lat + (Math.random() - 0.5) * 0.002;
-                    const newLng = currentPos.lng + (Math.random() - 0.5) * 0.002;
-                    droneMarker.setLatLng([newLat, newLng]);
-
-                    const lat = newLat + (Math.random() - 0.5) * 0.005;
-                    const lng = newLng + (Math.random() - 0.5) * 0.005;
-
-                    const marker = L.marker([lat, lng], {
-                        icon: createRedIcon()
-                    }).addTo(map);
-                    marker.bindPopup(`🔴 Mosquito Detection Site #${mosquitoMarkers.length + 1}`);
-                    mosquitoMarkers.push(marker);
-
-                    detectionCount = mosquitoMarkers.length;
-                    document.getElementById("detections").textContent = detectionCount;
-                }
-            }, 8000);
-
-            updateStatus();
-            updateCameras();
-        }
-
-        function landDrone() {
-            if (!droneTakeoffComplete) {
-                alert('⚠️ Drone is not in the air!');
-                return;
-            }
-
-            droneTakeoffComplete = false;
-
-            const statusEl = document.getElementById('droneStatus');
-            statusEl.className = 'drone-status online';
-            statusEl.textContent = '🟢 DRONE ONLINE - ON GROUND';
-
-            document.getElementById('landBtn').disabled = true;
-            document.getElementById('landBtn').style.opacity = '0.5';
-
-            mosquitoMarkers.forEach(m => {
-                if (map) map.removeLayer(m);
-            });
-            mosquitoMarkers = [];
-            document.getElementById("detections").textContent = "--";
-
-            if (droneMarker && map) {
-                const center = map.getCenter();
-                droneMarker.setLatLng([center.lat + 0.003, center.lng + 0.003]);
-                droneMarker.bindPopup('🔵 Drone on Ground - Ready for Takeoff');
-            }
-
-            if (window.detectionInterval) {
-                clearInterval(window.detectionInterval);
-                window.detectionInterval = null;
-            }
-
-            updateStatus();
-            updateCameras();
         }
 
         // ===== AUTH LOGIC =====
         function updateAuthUI() {
             const connectBtn = document.getElementById("connectDroneBtn");
             const takeoffBtn = document.getElementById("takeoffBtn");
-            const landBtn = document.getElementById("landBtn");
 
             if (authMode === "pilot" && droneConnected && droneOnline) {
                 connectBtn.style.display = "none";
-                takeoffBtn.disabled = false;
-                takeoffBtn.style.opacity = "1";
-                landBtn.disabled = true;
-                landBtn.style.opacity = "0.5";
+                if (areaSaved) {
+                    takeoffBtn.disabled = false;
+                    takeoffBtn.style.opacity = "1";
+                    takeoffBtn.textContent = "🛫 Take Off";
+                } else {
+                    takeoffBtn.disabled = true;
+                    takeoffBtn.style.opacity = "0.5";
+                    takeoffBtn.textContent = "⚠️ Save Area First";
+                }
 
                 if (!droneMarker && map && mapInitialized) {
-                    addDroneMarker();
+                    const center = map.getCenter();
+                    droneMarker = L.marker([center.lat + 0.003, center.lng + 0.003], {
+                        icon: createBlueIcon()
+                    }).addTo(map);
+                    droneMarker.bindPopup('🔵 Drone on Ground - Ready');
                 }
 
                 updateStatus();
                 updateCameras();
+
+                // Start fetching Pi data
+                if (isOnSkyhawkWifi) {
+                    startPiDataListener();
+                }
             } else if (authMode === "pilot" && !droneOnline) {
                 connectBtn.style.display = "none";
                 takeoffBtn.disabled = true;
                 takeoffBtn.style.opacity = "0.5";
-                landBtn.disabled = true;
-                landBtn.style.opacity = "0.5";
+                takeoffBtn.textContent = "⚠️ Drone Offline";
 
                 const statusEl = document.getElementById('droneStatus');
                 statusEl.className = 'drone-status error';
@@ -882,9 +1061,8 @@
                 droneTakeoffComplete = false;
                 connectBtn.style.display = "block";
                 takeoffBtn.disabled = true;
-                landBtn.disabled = true;
                 takeoffBtn.style.opacity = "0.5";
-                landBtn.style.opacity = "0.5";
+                takeoffBtn.textContent = "⚠️ Connect Drone First";
 
                 const statusEl = document.getElementById('droneStatus');
                 statusEl.className = 'drone-status offline';
@@ -908,11 +1086,9 @@
                 updateStatus();
                 updateCameras();
             }
-
-            updateWifiStatus();
         }
 
-        // Show connect page
+        // ===== SHOW CONNECT PAGE =====
         function showConnectPage() {
             if (authMode === "pilot") return;
             document.getElementById("connectPage").classList.add("show");
@@ -922,7 +1098,6 @@
             setTimeout(() => document.getElementById("piCodeInput").focus(), 100);
         }
 
-        // Hide connect page
         function hideConnectPage() {
             document.getElementById("connectPage").classList.remove("show");
             document.getElementById("piCodeInput").value = "";
@@ -930,7 +1105,7 @@
             document.getElementById("successMsg").classList.remove("show");
         }
 
-        // Handle connect - checks code AND drone online status
+        // ===== HANDLE CONNECT =====
         async function handleConnect() {
             if (isConnecting) return;
 
@@ -951,46 +1126,146 @@
             document.getElementById("connectBtn").disabled = true;
             document.getElementById("connectBtn").textContent = "CHECKING...";
 
-            const result = await checkPiCode(code);
-
-            if (result.success) {
-                successMsg.textContent = "✅ " + result.message;
-                successMsg.classList.add("show");
-
-                droneOnline = true;
-                droneConnected = true;
-                authMode = "pilot";
-                localStorage.setItem("authMode", "pilot");
-                localStorage.setItem("piCode", code);
-
-                setTimeout(() => {
-                    updateAuthUI();
-                    hideConnectPage();
-                    if (map && mapInitialized) {
-                        addDroneMarker();
-                    }
+            // Check Wi-Fi first
+            if (!isOnSkyhawkWifi) {
+                await checkWiFiConnection();
+                if (!isOnSkyhawkWifi) {
+                    errorMsg.textContent = "❌ Not connected to SKYHAWK Wi-Fi. Please connect to the drone's network.";
+                    errorMsg.classList.add("show");
                     isConnecting = false;
                     document.getElementById("connectBtn").disabled = false;
                     document.getElementById("connectBtn").textContent = "CONNECT";
-                }, 1000);
-            } else {
-                errorMsg.textContent = result.message;
-                errorMsg.classList.add("show");
-                document.getElementById("piCodeInput").value = "";
-                document.getElementById("piCodeInput").focus();
-                isConnecting = false;
-                document.getElementById("connectBtn").disabled = false;
-                document.getElementById("connectBtn").textContent = "CONNECT";
+                    return;
+                }
             }
+
+            // Check with Pi
+            // In real: fetch('http://192.168.4.188/verify', { method: 'POST', body: JSON.stringify({ code }) })
+            setTimeout(() => {
+                const correctCode = "SKY-7F2K9P";
+
+                if (code === correctCode) {
+                    successMsg.textContent = "✅ Code verified! Drone is online.";
+                    successMsg.classList.add("show");
+
+                    droneOnline = true;
+                    droneConnected = true;
+                    authMode = "pilot";
+                    localStorage.setItem("authMode", "pilot");
+                    localStorage.setItem("piCode", code);
+
+                    setTimeout(() => {
+                        updateAuthUI();
+                        hideConnectPage();
+                        if (map && mapInitialized) {
+                            const center = map.getCenter();
+                            droneMarker = L.marker([center.lat + 0.003, center.lng + 0.003], {
+                                icon: createBlueIcon()
+                            }).addTo(map);
+                            droneMarker.bindPopup('🔵 Drone on Ground - Ready');
+                        }
+                        isConnecting = false;
+                        document.getElementById("connectBtn").disabled = false;
+                        document.getElementById("connectBtn").textContent = "CONNECT";
+                    }, 1000);
+                } else {
+                    errorMsg.textContent = "❌ Incorrect code. Please try again.";
+                    errorMsg.classList.add("show");
+                    document.getElementById("piCodeInput").value = "";
+                    document.getElementById("piCodeInput").focus();
+                    isConnecting = false;
+                    document.getElementById("connectBtn").disabled = false;
+                    document.getElementById("connectBtn").textContent = "CONNECT";
+                }
+            }, 1500);
         }
 
         // ===== BUTTON HANDLERS =====
-        document.getElementById("takeoffBtn").addEventListener("click", takeOffDrone);
-        document.getElementById("landBtn").addEventListener("click", landDrone);
+        document.getElementById("takeoffBtn").addEventListener("click", () => {
+            if (authMode !== "pilot" || !droneConnected || !droneOnline) {
+                alert("⚠️ Drone not connected!");
+                return;
+            }
+
+            if (!areaSaved) {
+                alert("⚠️ Please draw and save a mission area first!");
+                return;
+            }
+
+            // Send takeoff command to Pi
+            // In real: fetch('http://192.168.4.188/takeoff', { method: 'POST' })
+            console.log('🛫 Takeoff command sent to Pi');
+
+            droneTakeoffComplete = true;
+
+            const statusEl = document.getElementById('droneStatus');
+            statusEl.className = 'drone-status online';
+            statusEl.textContent = '🛸 DRONE FLYING - MISSION ACTIVE';
+
+            document.getElementById('takeoffBtn').disabled = true;
+            document.getElementById('takeoffBtn').textContent = '🛸 Flying...';
+            document.getElementById('landBtn').disabled = false;
+            document.getElementById('landBtn').style.opacity = '1';
+
+            if (droneMarker && map) {
+                const pos = droneMarker.getLatLng();
+                droneMarker.setLatLng([pos.lat + 0.005, pos.lng + 0.005]);
+                droneMarker.bindPopup('🔵 Drone in Flight');
+            }
+
+            // Send mission area to Pi
+            console.log('📍 Mission area sent to Pi:', missionArea);
+
+            updateStatus();
+            updateCameras();
+
+            alert('🛫 Drone taking off! Mission started.');
+        });
+
+        document.getElementById("landBtn").addEventListener("click", () => {
+            if (!droneTakeoffComplete) {
+                alert('⚠️ Drone is not in the air!');
+                return;
+            }
+
+            // Send land command to Pi
+            // In real: fetch('http://192.168.4.188/land', { method: 'POST' })
+            console.log('🛬 Land command sent to Pi');
+
+            droneTakeoffComplete = false;
+
+            const statusEl = document.getElementById('droneStatus');
+            statusEl.className = 'drone-status online';
+            statusEl.textContent = '🟢 DRONE ONLINE - ON GROUND';
+
+            document.getElementById('takeoffBtn').disabled = false;
+            document.getElementById('takeoffBtn').textContent = '🛫 Take Off';
+            document.getElementById('landBtn').disabled = true;
+            document.getElementById('landBtn').style.opacity = '0.5';
+
+            if (droneMarker && map) {
+                const center = map.getCenter();
+                droneMarker.setLatLng([center.lat + 0.003, center.lng + 0.003]);
+                droneMarker.bindPopup('🔵 Drone on Ground - Ready');
+            }
+
+            // Keep detection markers for reference
+            // But reset for next mission if needed
+            if (window.detectionInterval) {
+                clearInterval(window.detectionInterval);
+                window.detectionInterval = null;
+            }
+
+            alert('🛬 Drone landed safely.');
+            updateStatus();
+            updateCameras();
+        });
 
         document.getElementById("logoutBtn").addEventListener("click", () => {
+            // Clear session data
             localStorage.removeItem("authMode");
             localStorage.removeItem("piCode");
+            // Don't clear emergency location - keep for reference
             window.location.href = "index.html";
         });
 
@@ -1016,15 +1291,17 @@
         // ===== INIT =====
         updateAuthUI();
 
-        // Check Wi-Fi connection every 5 seconds
+        // Check Wi-Fi connection every 10 seconds
         checkWiFiConnection();
-        setInterval(checkWiFiConnection, 5000);
+        setInterval(checkWiFiConnection, 10000);
 
         window.addEventListener('load', function () {
             setTimeout(initMap, 500);
-            // Start checking for drone status after map loads
-            setTimeout(checkDroneStatusFromPi, 2000);
         });
+
+        console.log('🛸 SKYHAWK Dashboard Loaded');
+        console.log('📍 Draw area on map, save it, then press Take Off!');
+        console.log('📡 Waiting for Pi data...');
     </script>
 
 </body>

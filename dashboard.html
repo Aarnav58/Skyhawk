@@ -541,7 +541,7 @@
         function checkWiFiConnection() {
             const wifiStatus = document.getElementById('wifiStatus');
 
-            fetch('http://192.168.24.188/ping', {
+            fetch('http://10.42.0.1/ping', {
                 method: 'HEAD',
                 mode: 'no-cors',
                 cache: 'no-cache',
@@ -574,7 +574,7 @@
         }
 
         function fetchPiStatus() {
-            // In real implementation: fetch('http://192.168.24.188/status')
+            // In real implementation: fetch('http://10.42.0.1/status')
             // For now, this is where the Pi data would come in
             // The dashboard will update when REAL data arrives
             console.log('📡 Fetching Pi status...');
@@ -762,12 +762,12 @@
             }
 
             cam1.innerHTML =
-                `<img src="http://192.168.24.188/stream" style="width:100%; height:100%; object-fit:cover; background: #1a1a2e;">`;
+                `<img src="http://10.42.0.1/stream" style="width:100%; height:100%; object-fit:cover; background: #1a1a2e;">`;
             cam1.style.background = "none";
             cam1.style.color = "transparent";
 
             cam2.innerHTML =
-                `<img src="http://192.168.24.188/thermal" style="width:100%; height:100%; object-fit:cover; background: #1a1a2e;">`;
+                `<img src="http://10.42.0.1/thermal" style="width:100%; height:100%; object-fit:cover; background: #1a1a2e;">`;
             cam2.style.background = "none";
             cam2.style.color = "transparent";
         }
@@ -960,7 +960,7 @@
 
             // Send to Pi
             console.log('Mission Area Sent to Pi:', missionArea);
-            // In real: fetch('http://192.168.24.188/mission', { method: 'POST', body: JSON.stringify({ area: missionArea }) })
+            // In real: fetch('http://10.42.0.1/mission', { method: 'POST', body: JSON.stringify({ area: missionArea }) })
 
             document.getElementById('areaStatus').textContent = `✅ Area saved! (${missionArea.length} points)`;
             document.getElementById('areaStatus').className = 'area-status saved';
@@ -1140,7 +1140,7 @@
             }
 
             // Check with Pi
-            // In real: fetch('http://192.168.24.188/verify', { method: 'POST', body: JSON.stringify({ code }) })
+            // In real: fetch('http://10.42.0.1/verify', { method: 'POST', body: JSON.stringify({ code }) })
             setTimeout(() => {
                 const correctCode = "SKY-7F2K9P";
 
@@ -1193,7 +1193,7 @@
             }
 
             // Send takeoff command to Pi
-            // In real: fetch('http://192.168.24.188/takeoff', { method: 'POST' })
+            // In real: fetch('http://10.42.0.1/takeoff', { method: 'POST' })
             console.log('🛫 Takeoff command sent to Pi');
 
             droneTakeoffComplete = true;
@@ -1229,7 +1229,7 @@
             }
 
             // Send land command to Pi
-            // In real: fetch('http://192.168.24.188/land', { method: 'POST' })
+            // In real: fetch('http://10.42.0.1/land', { method: 'POST' })
             console.log('🛬 Land command sent to Pi');
 
             droneTakeoffComplete = false;

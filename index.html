@@ -141,8 +141,8 @@
             wifiStatus.className = 'checking';
             wifiStatus.textContent = '📶 Checking Wi-Fi...';
 
-            // Try to reach the Pi at 192.168.4.188
-            fetch('http://192.168.4.188/ping', {
+            // Try to reach the Pi at 10.42.0.1
+            fetch('http://10.42.0.1/ping', {
                 method: 'HEAD',
                 mode: 'no-cors',
                 cache: 'no-cache',
@@ -167,7 +167,7 @@
         function checkDroneStatus() {
             if (!isOnSkyhawkWifi) return;
 
-            // In real implementation: fetch('http://192.168.4.188/status')
+            // In real implementation: fetch('http://10.42.0.1/status')
             // For demo, we'll simulate a check
             const wifiStatus = document.getElementById('wifi-status');
             wifiStatus.textContent = '📶 Checking drone status...';
@@ -194,7 +194,7 @@
                     return;
                 }
 
-                // In real implementation: fetch('http://192.168.4.188/verify', { method: 'POST', body: JSON.stringify({ code }) })
+                // In real implementation: fetch('http://10.42.0.1/verify', { method: 'POST', body: JSON.stringify({ code }) })
                 // For demo, we'll simulate
                 setTimeout(() => {
                     const correctCode = 'SKY-7F2K9P';

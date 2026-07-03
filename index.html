@@ -2,6 +2,15 @@
 <html>
 
 <head>
+    <link rel="manifest" href="manifest.json">
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log('Skyhawk Offline Mode Ready!'))
+      .catch((err) => console.log('Service Worker Failed:', err));
+  }
+</script>
+
     <title>Skyhawk Login</title>
     <style>
         body {

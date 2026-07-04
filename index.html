@@ -1,140 +1,40 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <link rel="manifest" href="manifest.json">
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-      .then(() => console.log('Skyhawk Offline Mode Ready!'))
-      .catch((err) => console.log('Service Worker Failed:', err));
-  }
-</script>
-
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+                .then(() => console.log('Skyhawk Offline Mode Ready!'))
+                .catch((err) => console.log('Service Worker Failed:', err));
+        }
+    </script>
     <title>Skyhawk Login</title>
     <style>
-        body {
-            background: #1e1e1e;
-            color: white;
-            font-family: Arial;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-
-        #login-box {
-            background: #2e2e2e;
-            padding: 40px;
-            border-radius: 12px;
-            text-align: center;
-            width: 300px;
-        }
-
-        input {
-            width: 90%;
-            padding: 10px;
-            margin-top: 15px;
-            border-radius: 8px;
-            border: none;
-        }
-
-        button {
-            margin-top: 20px;
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: none;
-            background: #4caf50;
-            color: white;
-            cursor: pointer;
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        /* Error message style */
-        #error-message {
-            color: #ff6b6b;
-            margin-top: 10px;
-            font-size: 14px;
-            display: none;
-        }
-
-        #error-message.show {
-            display: block;
-        }
-
-        /* Wi-Fi status indicator */
-        #wifi-status {
-            margin-top: 10px;
-            font-size: 12px;
-            padding: 5px;
-            border-radius: 4px;
-        }
-
-        #wifi-status.connected {
-            color: #4caf50;
-        }
-
-        #wifi-status.not-connected {
-            color: #ff6b6b;
-        }
-
-        #wifi-status.checking {
-            color: #ff9800;
-        }
-
-        /* Loading spinner */
-        .spinner {
-            display: none;
-            width: 20px;
-            height: 20px;
-            margin: 10px auto;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #4caf50;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        .spinner.show {
-            display: block;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
+        body { background: #1e1e1e; color: white; font-family: Arial; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        #login-box { background: #2e2e2e; padding: 40px; border-radius: 12px; text-align: center; width: 300px; }
+        input { width: 90%; padding: 10px; margin-top: 15px; border-radius: 8px; border: none; }
+        button { margin-top: 20px; padding: 10px 20px; border-radius: 8px; border: none; background: #4caf50; color: white; cursor: pointer; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #error-message { color: #ff6b6b; margin-top: 10px; font-size: 14px; display: none; }
+        #error-message.show { display: block; }
+        #wifi-status { margin-top: 10px; font-size: 12px; padding: 5px; border-radius: 4px; }
+        #wifi-status.connected { color: #4caf50; }
+        #wifi-status.not-connected { color: #ff6b6b; }
+        #wifi-status.checking { color: #ff9800; }
+        .spinner { display: none; width: 20px; height: 20px; margin: 10px auto; border: 3px solid #f3f3f3; border-top: 3px solid #4caf50; border-radius: 50%; animation: spin 1s linear infinite; }
+        .spinner.show { display: block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
-
 <body>
-
     <div id="login-box">
         <h2>Skyhawk Login</h2>
-
-        <!-- PASSWORD INPUT -->
         <input type="password" id="password" placeholder="Enter Password">
-
-        <!-- PI CODE INPUT -->
         <input type="text" id="piCode" placeholder="Enter Drone Code (optional)">
-
         <button id="loginBtn" onclick="login()">Login</button>
-
-        <!-- Loading spinner -->
         <div class="spinner" id="spinner"></div>
-
-        <!-- Wi-Fi status -->
         <div id="wifi-status" class="checking">📶 Checking Wi-Fi...</div>
-
-        <!-- Error message -->
         <div id="error-message">Incorrect code. Please try again.</div>
     </div>
 
@@ -150,81 +50,68 @@
             wifiStatus.className = 'checking';
             wifiStatus.textContent = '📶 Checking Wi-Fi...';
 
-            // Try to reach the Pi at 10.42.0.1
-            fetch('http://10.42.0.1/ping', {
-                method: 'HEAD',
-                mode: 'no-cors',
-                cache: 'no-cache',
-                timeout: 3000
+            fetch('http://10.42.0', {
+                method: 'GET',
+                mode: 'cors',
+                cache: 'no-cache'
             })
-                .then(() => {
-                    isOnSkyhawkWifi = true;
-                    wifiStatus.className = 'connected';
-                    wifiStatus.textContent = '✅ Connected to SKYHAWK Wi-Fi';
-                    // Check drone status now that we're connected
-                    checkDroneStatus();
-                })
-                .catch(() => {
-                    isOnSkyhawkWifi = false;
-                    wifiStatus.className = 'not-connected';
-                    wifiStatus.textContent = '❌ Not connected to SKYHAWK Wi-Fi';
-                    droneOnline = false;
-                });
+            .then(() => {
+                isOnSkyhawkWifi = true;
+                wifiStatus.className = 'connected';
+                wifiStatus.textContent = '✅ Connected to SKYHAWK Wi-Fi';
+                checkDroneStatus();
+            })
+            .catch(() => {
+                isOnSkyhawkWifi = false;
+                wifiStatus.className = 'not-connected';
+                wifiStatus.textContent = '❌ Not connected to SKYHAWK Wi-Fi';
+                droneOnline = false;
+            });
         }
 
         // ===== CHECK DRONE STATUS FROM PI =====
         function checkDroneStatus() {
             if (!isOnSkyhawkWifi) return;
-
-            // In real implementation: fetch('http://10.42.0.1/status')
-            // For demo, we'll simulate a check
             const wifiStatus = document.getElementById('wifi-status');
-            wifiStatus.textContent = '📶 Checking drone status...';
 
-            // Simulate checking with Pi
-            setTimeout(() => {
-                // For demo, drone is only online if we're on SKYHAWK Wi-Fi
-                // In real life, Pi would respond with actual status
-                droneOnline = true; // Simulated - in real life this comes from Pi
-                wifiStatus.className = 'connected';
-                wifiStatus.textContent = '✅ Connected to SKYHAWK Wi-Fi - Drone Online';
-            }, 1500);
+            fetch('http://10.42.0status')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.droneOnline) {
+                        droneOnline = true;
+                        wifiStatus.className = 'connected';
+                        wifiStatus.textContent = `✅ Connected to SKYHAWK Wi-Fi - Drone Online (Bat: ${data.battery}%)`;
+                    }
+                })
+                .catch(() => {
+                    wifiStatus.className = 'not-connected';
+                    wifiStatus.textContent = '⚠️ Connected to Wi-Fi, but Drone Server is Unreachable';
+                });
         }
 
         // ===== VERIFY CODE WITH PI =====
         function verifyCodeWithPi(code) {
-            return new Promise((resolve) => {
-                // First check if we're on SKYHAWK Wi-Fi
-                if (!isOnSkyhawkWifi) {
-                    resolve({
-                        success: false,
-                        message: '❌ Not connected to SKYHAWK Wi-Fi. Please connect to the drone\'s network.'
-                    });
-                    return;
+            if (!isOnSkyhawkWifi) {
+                return Promise.resolve({ success: false, message: "❌ Not connected to SKYHAWK Wi-Fi. Please connect to the drone's network." });
+            }
+
+            // 🎯 FIXED URL TYPE: Restored complete 10.42.0.1 IP and added correct /auth route link
+            return fetch('http://10.42.0auth', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ code: code })
+            })
+            .then(res => {
+                if (res.ok) {
+                    return { success: true, message: '✅ Code verified! Drone is online.' };
+                } else {
+                    return { success: false, message: '❌ Incorrect drone code. Please try again.' };
                 }
-
-                // In real implementation: fetch('http://10.42.0.1/verify', { method: 'POST', body: JSON.stringify({ code }) })
-                // For demo, we'll simulate
-                setTimeout(() => {
-                    const correctCode = 'SKY-7F2K9P';
-
-                    if (code !== correctCode) {
-                        resolve({
-                            success: false,
-                            message: '❌ Incorrect code. Please try again.'
-                        });
-                    } else if (!droneOnline) {
-                        resolve({
-                            success: false,
-                            message: '❌ Drone not setup. Please power on the drone and try again.'
-                        });
-                    } else {
-                        resolve({
-                            success: true,
-                            message: '✅ Code verified! Drone is online.'
-                        });
-                    }
-                }, 1500);
+            })
+            .catch(() => {
+                return { success: false, message: '❌ Connection dropped. Verify Flask is running on the Pi.' };
             });
         }
 
@@ -236,16 +123,13 @@
             const loginBtn = document.getElementById('loginBtn');
             const spinner = document.getElementById('spinner');
 
-            // Hide error message
             errorMsg.classList.remove('show');
 
-            // Password check
             if (pass !== 'Maggy') {
                 alert('Incorrect password');
                 return;
             }
 
-            // If NO code is entered → Guest mode
             if (code === '') {
                 localStorage.setItem('authMode', 'guest');
                 localStorage.removeItem('piCode');
@@ -253,59 +137,35 @@
                 return;
             }
 
-            // If code IS entered → Verify with Pi
-            // Disable button and show spinner
             loginBtn.disabled = true;
             spinner.classList.add('show');
 
-            // Check Wi-Fi first if not already checked
-            if (!isOnSkyhawkWifi) {
-                await checkWiFiConnection();
-                if (!isOnSkyhawkWifi) {
-                    errorMsg.textContent = '❌ Not connected to SKYHAWK Wi-Fi. Please connect to the drone\'s network.';
-                    errorMsg.classList.add('show');
-                    loginBtn.disabled = false;
-                    spinner.classList.remove('show');
-                    return;
-                }
-            }
-
-            // Verify the code with Pi
             const result = await verifyCodeWithPi(code);
 
             if (result.success) {
-                // Correct code + drone online
                 localStorage.setItem('authMode', 'pilot');
                 localStorage.setItem('piCode', code);
                 window.location.href = 'dashboard.html';
             } else {
-                // Show error
                 errorMsg.textContent = result.message;
                 errorMsg.classList.add('show');
                 document.getElementById('piCode').value = '';
                 document.getElementById('piCode').focus();
                 loginBtn.disabled = false;
-                spinner.classList.remove('show');
+                spinner.xl.classList.remove('show');
             }
         }
 
-        // ===== ALLOW ENTER KEY =====
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Enter') {
                 login();
             }
         });
 
-        // ===== CHECK WIFI ON PAGE LOAD =====
         window.addEventListener('load', function () {
-            // Check Wi-Fi connection after 1 second
             setTimeout(checkWiFiConnection, 1000);
-
-            // Re-check Wi-Fi every 10 seconds
             setInterval(checkWiFiConnection, 10000);
         });
     </script>
-
 </body>
-
 </html>

@@ -151,9 +151,8 @@
             wifiStatus.textContent = '📶 Checking Wi-Fi...';
 
             // Try to reach the Pi at 10.42.0.1
-            fetch('http://10.42.0.1/ping', {
-                method: 'HEAD',
-                mode: 'no-cors',
+            fetch('https://10.42.0.1/ping', {
+                method: 'get',
                 cache: 'no-cache',
                 timeout: 3000
             })
@@ -192,41 +191,32 @@
         }
 
         // ===== VERIFY CODE WITH PI =====
-        function verifyCodeWithPi(code) {
-            return new Promise((resolve) => {
-                // First check if we're on SKYHAWK Wi-Fi
-                if (!isOnSkyhawkWifi) {
-                    resolve({
-                        success: false,
-                        message: '❌ Not connected to SKYHAWK Wi-Fi. Please connect to the drone\'s network.'
-                    });
-                    return;
-                }
+function verifyCodeWithPi(code) {
+  // First check if we're on SKYHAWK Wi-Fi
+  if (!isOnSkyhawkWifi) {
+    return Promise.resolve({ success: false, message: '❌ Not connected to SKYHAWK Wi-Fi. Please connect to the drone\'s network.' });
+  }
 
-                // In real implementation: fetch('http://10.42.0.1/verify', { method: 'POST', body: JSON.stringify({ code }) })
-                // For demo, we'll simulate
-                setTimeout(() => {
-                    const correctCode = 'SKY-7F2K9P';
+  // 🎯 REAL IMPLEMENTATION: Replaces the fake simulation with a live secure network call
+  return fetch('https://10.42.0', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ code: code })
+  })
+  .then(res => {
+    if (res.ok) {
+      return { success: true, message: '✅ Code verified! Drone is online.' };
+    } else {
+      return { success: false, message: '❌ Incorrect drone code. Please try again.' };
+    }
+  })
+  .catch(() => {
+    return { success: false, message: '❌ Connection dropped. Verify Flask is running on the Pi.' };
+  });
+}
 
-                    if (code !== correctCode) {
-                        resolve({
-                            success: false,
-                            message: '❌ Incorrect code. Please try again.'
-                        });
-                    } else if (!droneOnline) {
-                        resolve({
-                            success: false,
-                            message: '❌ Drone not setup. Please power on the drone and try again.'
-                        });
-                    } else {
-                        resolve({
-                            success: true,
-                            message: '✅ Code verified! Drone is online.'
-                        });
-                    }
-                }, 1500);
-            });
-        }
 
         // ===== LOGIN FUNCTION =====
         async function login() {

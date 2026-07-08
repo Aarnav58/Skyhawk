@@ -982,6 +982,22 @@
             document.getElementById('takeoffBtn').style.opacity = "0.5";
             document.getElementById('takeoffBtn').textContent = "⚠️ Save Area First";
         }
+        // ===== WATER SOURCE MARKER (YELLOW) =====
+function addWaterSource(lat, lng) {
+    if (!map || !mapInitialized) return;
+
+    const yellowIcon = L.divIcon({
+        className: 'yellow-marker',
+        html: '💧',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+    });
+
+    const marker = L.marker([lat, lng], {
+        icon: yellowIcon
+    }).addTo(map);
+    marker.bindPopup(`💧 Water Source Detected<br>Lat: ${lat}<br>Lng: ${lng}`);
+}
 
         // ===== DETECTION FUNCTIONS =====
         function addMosquitoDetection(lat, lng) {

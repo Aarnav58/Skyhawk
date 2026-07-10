@@ -10,86 +10,126 @@
 
     <style>
         /* -------------------- GENERAL -------------------- */
+        * {
+            box-sizing: border-box;
+        }
 
         body {
-            background-color: #8179798e;
+            background-color: #f1f5f9;
             margin: 0;
-            font-family: Arial, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            padding: 20px;
+            color: #1e293b;
         }
 
         h1 {
             text-align: center;
-            color: #000000;
             font-size: 58px;
             margin: 0;
             font-weight: 700;
+            letter-spacing: -1px;
+            color: #f8fafc;
         }
 
         /* -------------------- TOP BAR -------------------- */
-
         .topbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 25px;
-            background-color: #d9d9d9;
-            border-bottom: 2px solid #222;
+            padding: 16px 30px;
+            background-color: #1e293b;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 24px;
         }
 
         .time,
         .date {
-            font-size: 32px;
-            color: black;
-            font-weight: 700;
+            font-size: 20px;
+            color: #cbd5e1;
+            font-weight: 500;
+            letter-spacing: 0.3px;
         }
 
         /* -------------------- ACCORDION -------------------- */
-
         .accordion {
             width: 90%;
             margin: 20px auto;
-            border-radius: 12px;
+            border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            background: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e9edf2;
         }
 
         .accordion-header {
-            background-color: #d9d9d9;
-            color: black;
-            padding: 20px;
+            background-color: #f8fafc;
+            color: #1e293b;
+            padding: 20px 24px;
             cursor: pointer;
-            font-size: 28px;
+            font-size: 22px;
+            font-weight: 600;
+            transition: background 0.2s ease;
+            border-bottom: 1px solid #e9edf2;
+        }
+
+        .accordion-header:hover {
+            background-color: #f1f5f9;
         }
 
         .accordion-content {
-            background-color: white;
-            padding: 20px;
+            background-color: #ffffff;
+            padding: 20px 24px;
             display: none;
         }
 
         /* -------------------- STATUS ITEMS -------------------- */
-
         .status-item {
-            font-size: 22px;
-            margin-bottom: 10px;
-            color: black;
+            font-size: 18px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            color: #1e293b;
+            font-weight: 500;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-item strong {
+            font-weight: 500;
+            color: #64748b;
+        }
+
+        .status-item span {
+            font-weight: 600;
+            color: #0f172a;
         }
 
         /* ===== AUTH STYLES ===== */
-
         /* Connect Drone button */
         #connectDroneBtn {
             width: 90%;
             margin: 20px auto;
             display: block;
-            padding: 12px;
+            padding: 14px;
             font-size: 18px;
-            font-weight: bold;
-            border-radius: 12px;
+            font-weight: 700;
+            border-radius: 60px;
             border: none;
-            background: orange;
-            color: black;
+            background: linear-gradient(135deg, #f97316, #fb923c);
+            color: #ffffff;
             cursor: pointer;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            letter-spacing: 0.3px;
+        }
+
+        #connectDroneBtn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.35);
         }
 
         /* Connect page styles */
@@ -100,7 +140,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(8px);
             z-index: 1000;
             align-items: center;
             justify-content: center;
@@ -111,41 +152,51 @@
         }
 
         .connect-container {
-            background: #2e2e2e;
-            padding: 50px;
-            border-radius: 16px;
+            background: #1e293b;
+            padding: 48px;
+            border-radius: 24px;
             text-align: center;
-            width: 400px;
-            color: white;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            width: 420px;
+            color: #f8fafc;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+            border: 1px solid #334155;
         }
 
         .connect-container h2 {
-            color: white;
+            color: #f8fafc;
             font-size: 32px;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            font-weight: 700;
         }
 
         .connect-container .sub {
-            color: #aaa;
+            color: #94a3b8;
             font-size: 16px;
-            margin-bottom: 25px;
+            margin-bottom: 28px;
         }
 
         .connect-container input {
             width: 90%;
-            padding: 14px;
+            padding: 14px 18px;
             font-size: 18px;
-            border-radius: 8px;
-            border: none;
-            margin-bottom: 20px;
+            border-radius: 60px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #f8fafc;
             text-align: center;
+            margin-bottom: 20px;
+            transition: border 0.2s;
+        }
+
+        .connect-container input:focus {
+            outline: none;
+            border-color: #fb923c;
         }
 
         .connect-container .error-msg {
-            color: #ff6b6b;
-            margin-bottom: 15px;
-            font-size: 16px;
+            color: #f87171;
+            margin-bottom: 16px;
+            font-size: 15px;
             display: none;
         }
 
@@ -154,9 +205,9 @@
         }
 
         .connect-container .success-msg {
-            color: #4caf50;
-            margin-bottom: 15px;
-            font-size: 16px;
+            color: #4ade80;
+            margin-bottom: 16px;
+            font-size: 15px;
             display: none;
         }
 
@@ -166,96 +217,114 @@
 
         .connect-container .actions {
             display: flex;
-            gap: 15px;
+            gap: 12px;
             justify-content: center;
         }
 
         .connect-container .actions button {
-            padding: 12px 40px;
-            border-radius: 8px;
+            padding: 12px 36px;
+            border-radius: 60px;
             border: none;
             cursor: pointer;
-            font-size: 18px;
-            font-weight: bold;
+            font-size: 17px;
+            font-weight: 600;
+            transition: transform 0.15s, box-shadow 0.15s;
         }
 
         .connect-container .actions .primary {
-            background: #4caf50;
-            color: white;
+            background: linear-gradient(135deg, #22c55e, #4ade80);
+            color: #0f172a;
         }
 
         .connect-container .actions .primary:hover {
-            background: #45a049;
+            transform: scale(1.02);
+            box-shadow: 0 4px 16px rgba(34, 197, 94, 0.3);
         }
 
         .connect-container .actions .secondary {
-            background: #666;
-            color: white;
+            background: #334155;
+            color: #cbd5e1;
         }
 
         .connect-container .actions .secondary:hover {
-            background: #555;
+            transform: scale(1.02);
         }
 
         /* Flight controls */
         .flight-controls {
             width: 100%;
             display: flex;
-            justify-content: space-between;
-            padding: 15px 20px;
+            justify-content: center;
+            gap: 14px;
+            padding: 10px 0;
+            flex-wrap: wrap;
         }
 
         .flight-controls button {
-            padding: 12px 25px;
-            font-size: 18px;
-            font-weight: bold;
+            padding: 12px 32px;
+            font-size: 17px;
+            font-weight: 600;
             border: none;
-            border-radius: 12px;
+            border-radius: 60px;
             cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            letter-spacing: 0.3px;
+        }
+
+        .flight-controls button:not(:disabled):hover {
+            transform: scale(1.04);
         }
 
         .takeoff {
-            background-color: #28a745;
+            background: linear-gradient(135deg, #16a34a, #22c55e);
             color: white;
+            box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
         }
 
         .takeoff:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none;
         }
 
         .logout {
-            background-color: #007bff;
-            color: white;
+            background: #e2e8f0;
+            color: #1e293b;
         }
 
         .land {
-            background-color: #dc3545;
+            background: linear-gradient(135deg, #dc2626, #ef4444);
             color: white;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
         }
 
         .land:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none;
         }
 
         /* Camera box */
         .camera-box {
             width: 100%;
             height: 300px;
-            background: black;
-            color: white;
+            background: #0f172a;
+            color: #94a3b8;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 20px;
+            border-radius: 16px;
+            border: 1px solid #1e293b;
         }
 
         /* Custom marker styles */
         .green-marker {
-            background: #00ff00;
+            background: #22c55e;
             border-radius: 50%;
-            border: 3px solid #008800;
+            border: 3px solid #16a34a;
             width: 20px;
             height: 20px;
             display: flex;
@@ -264,13 +333,13 @@
             font-size: 16px;
             font-weight: bold;
             color: black;
-            box-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.5);
         }
 
         .blue-marker {
-            background: #0088ff;
+            background: #3b82f6;
             border-radius: 50%;
-            border: 3px solid #0044aa;
+            border: 3px solid #2563eb;
             width: 20px;
             height: 20px;
             display: flex;
@@ -279,70 +348,91 @@
             font-size: 16px;
             font-weight: bold;
             color: white;
-            box-shadow: 0 0 15px rgba(0, 136, 255, 0.6);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
         }
 
         .red-marker {
-            background: #ff0000;
+            background: #ef4444;
             border-radius: 50%;
-            border: 3px solid #aa0000;
+            border: 3px solid #dc2626;
             width: 16px;
             height: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
+            font-size: 10px;
             font-weight: bold;
             color: white;
-            box-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+        }
+
+        .yellow-marker {
+            background: #facc15;
+            border-radius: 50%;
+            border: 3px solid #eab308;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: #0f172a;
+            box-shadow: 0 0 15px rgba(250, 204, 21, 0.5);
         }
 
         /* Drone status indicator */
         .drone-status {
             text-align: center;
-            padding: 10px;
-            margin: 10px auto;
+            padding: 12px 20px;
+            margin: 14px auto;
             width: 90%;
-            border-radius: 8px;
-            font-weight: bold;
+            border-radius: 60px;
+            font-weight: 600;
             font-size: 18px;
+            max-width: 400px;
+            letter-spacing: 0.3px;
+            border: 1px solid transparent;
         }
 
         .drone-status.offline {
-            background: #ff4444;
-            color: white;
+            background: #fef2f2;
+            color: #dc2626;
+            border-color: #fecaca;
         }
 
         .drone-status.online {
-            background: #4caf50;
-            color: white;
+            background: #f0fdf4;
+            color: #16a34a;
+            border-color: #bbf7d0;
         }
 
         .drone-status.waiting {
-            background: #ff9800;
-            color: white;
+            background: #fffbeb;
+            color: #d97706;
+            border-color: #fde68a;
         }
 
         .drone-status.error {
-            background: #ff4444;
-            color: white;
+            background: #fef2f2;
+            color: #b91c1c;
+            border-color: #fecaca;
         }
 
         .drone-status.emergency {
-            background: #ff0000;
-            color: white;
-            animation: blink 0.5s infinite;
+            background: #fef2f2;
+            color: #dc2626;
+            border-color: #fecaca;
+            animation: blink 0.8s infinite;
         }
 
         @keyframes blink {
-
             0%,
             100% {
                 opacity: 1;
             }
-
             50% {
-                opacity: 0.3;
+                opacity: 0.4;
             }
         }
 
@@ -358,50 +448,70 @@
         .map-controls button {
             padding: 8px 20px;
             border: none;
-            border-radius: 8px;
+            border-radius: 40px;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 600;
             font-size: 14px;
+            transition: all 0.15s ease;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        .map-controls button:hover {
+            background: #e2e8f0;
+            transform: scale(1.02);
         }
 
         .btn-draw {
-            background: #2196F3;
-            color: white;
+            background: #3b82f6 !important;
+            color: white !important;
         }
 
         .btn-draw.active {
-            background: #ff5722;
+            background: #f97316 !important;
         }
 
         .btn-save {
-            background: #4caf50;
-            color: white;
+            background: #22c55e !important;
+            color: white !important;
         }
 
         .btn-save:disabled {
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: not-allowed;
+            transform: none !important;
         }
 
         .btn-clear {
-            background: #ff5722;
-            color: white;
+            background: #f1f5f9 !important;
+            color: #1e293b !important;
         }
 
         .area-status {
             font-size: 14px;
-            color: #333;
-            padding: 5px 15px;
-            background: #f0f0f0;
-            border-radius: 5px;
+            color: #475569;
+            padding: 6px 16px;
+            background: #f8fafc;
+            border-radius: 40px;
+            border: 1px solid #e2e8f0;
         }
 
         .area-status.saved {
-            background: #c8e6c9;
-            color: #2e7d32;
+            background: #f0fdf4;
+            color: #16a34a;
+            border-color: #bbf7d0;
+        }
+
+        /* Map */
+        #map {
+            width: 100%;
+            height: 400px;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            margin-top: 4px;
         }
     </style>
-
 </head>
 
 <body>
@@ -983,21 +1093,21 @@
             document.getElementById('takeoffBtn').textContent = "⚠️ Save Area First";
         }
         // ===== WATER SOURCE MARKER (YELLOW) =====
-function addWaterSource(lat, lng) {
-    if (!map || !mapInitialized) return;
+        function addWaterSource(lat, lng) {
+            if (!map || !mapInitialized) return;
 
-    const yellowIcon = L.divIcon({
-        className: 'yellow-marker',
-        html: '💧',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
-    });
+            const yellowIcon = L.divIcon({
+                className: 'yellow-marker',
+                html: '💧',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
 
-    const marker = L.marker([lat, lng], {
-        icon: yellowIcon
-    }).addTo(map);
-    marker.bindPopup(`💧 Water Source Detected<br>Lat: ${lat}<br>Lng: ${lng}`);
-}
+            const marker = L.marker([lat, lng], {
+                icon: yellowIcon
+            }).addTo(map);
+            marker.bindPopup(`💧 Water Source Detected<br>Lat: ${lat}<br>Lng: ${lng}`);
+        }
 
         // ===== DETECTION FUNCTIONS =====
         function addMosquitoDetection(lat, lng) {

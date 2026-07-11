@@ -1,15 +1,15 @@
 {
-  "name": "Skyhawk Drone Control",
-  "short_name": "Skyhawk",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
-  "icons": [
-    {
-      "src": "icon.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+    "name": "Skyhawk Drone Control",
+    "short_name": "Skyhawk",
+    "start_url": "/index.html?v=2",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#000000",
+    "icons": [
+        {
+            "src": "icon.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
 }

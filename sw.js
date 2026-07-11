@@ -1,32 +1,57 @@
-const CACHE_NAME = 'skyhawk-v1';
-const ASSETS = [
-  './',
-  './index.html',
-  './dashboard.html',
-  './styles.css',
-  './manifest.json',
-  './icon.png'
+// SKYHAWK Service Worker - Offline Mode
+// Version 2 - Updated to refresh cache
+
+const CACHE_NAME = 'skyhawk-v2';
+const urlsToCache = [
+    '/index.html',
+    '/dashboard.html',
+    '/manifest.json',
+    '/sw.js',
+    'https://unpkg.com/leaflet/dist/leaflet.css',
+    'https://unpkg.com/leaflet/dist/leaflet.js'
 ];
 
-// Install stage: Save files to iPad memory
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
-    })
-  );
+// Install - Cache all files
+self.addEventListener('install', event => {
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then(cache => cache.addAll(urlsToCache))
+            .then(() => self.skipWaiting())
+    );
 });
 
-// Activation stage
-self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+// Activate - Clean old caches
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        caches.keys().then(cacheNames => {
+            return Promise.all(
+                cacheNames.map(cacheName => {
+                    if (cacheName !== CACHE_NAME) {
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        }).then(() => self.clients.claim())
+    );
 });
 
-// Fetch stage: Serve files from iPad memory when offline
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return cachedResponse || fetch(event.request);
-    })
-  );
+// Fetch - Serve from cache, fallback to network
+self.addEventListener('fetch', event => {
+    event.respondWith(
+        caches.match(event.request)
+            .then(response => {
+                // Cache hit - return response
+                if (response) {
+                    return response;
+                }
+                // Otherwise, fetch from network
+                return fetch(event.request).catch(() => {
+                    // Offline fallback
+                    return new Response('SKYHAWK Offline - Connect to the drone network.', {
+                        status: 503,
+                        statusText: 'Service Unavailable'
+                    });
+                });
+            })
+    );
 });

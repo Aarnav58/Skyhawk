@@ -1,26 +1,24 @@
-// SKYHAWK Service Worker - Offline Mode
-// Version 2 - Updated to refresh cache
+const CACHE_NAME = 'skyhawk-v5';
 
-const CACHE_NAME = 'skyhawk-v2';
 const urlsToCache = [
+    '/',
     '/index.html',
     '/dashboard.html',
     '/manifest.json',
-    '/sw.js',
-    'https://unpkg.com/leaflet/dist/leaflet.css',
-    'https://unpkg.com/leaflet/dist/leaflet.js'
+    '/sw.js'
 ];
 
-// Install - Cache all files
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(urlsToCache))
+            .then(cache => {
+                console.log('Opened cache');
+                return cache.addAll(urlsToCache);
+            })
             .then(() => self.skipWaiting())
     );
 });
 
-// Activate - Clean old caches
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(cacheNames => {
@@ -35,19 +33,15 @@ self.addEventListener('activate', event => {
     );
 });
 
-// Fetch - Serve from cache, fallback to network
 self.addEventListener('fetch', event => {
     event.respondWith(
         caches.match(event.request)
             .then(response => {
-                // Cache hit - return response
                 if (response) {
                     return response;
                 }
-                // Otherwise, fetch from network
                 return fetch(event.request).catch(() => {
-                    // Offline fallback
-                    return new Response('SKYHAWK Offline - Connect to the drone network.', {
+                    return new Response('Offline - SKYHAWK', {
                         status: 503,
                         statusText: 'Service Unavailable'
                     });

@@ -1,8 +1,9 @@
-const CACHE_NAME = 'skyhawk-v5';
+const CACHE_NAME = 'skyhawk-v6';
 
 const urlsToCache = [
     '/',
     '/index.html',
+    '/index.html?v=2',
     '/dashboard.html',
     '/manifest.json',
     '/sw.js'

@@ -510,6 +510,12 @@
             overflow: hidden;
             border: 1px solid #e2e8f0;
             margin-top: 4px;
+            background: #e9edf2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-size: 16px;
         }
     </style>
 </head>
@@ -933,53 +939,63 @@
             if (mapInitialized) return;
             mapInitialized = true;
 
-            map = L.map('map', {
-                worldCopyJump: false,
-                maxBoundsViscosity: 1.0
-            }).setView([39.02, -104.82], 15);
+            // Try to create the map with offline fallback
+            try {
+                map = L.map('map', {
+                    worldCopyJump: false,
+                    maxBoundsViscosity: 1.0
+                }).setView([39.02, -104.82], 15);
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                noWrap: true,
-                bounds: [
-                    [-85, -180],
-                    [85, 180]
-                ]
-            }).addTo(map);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    noWrap: true,
+                    bounds: [
+                        [-85, -180],
+                        [85, 180]
+                    ]
+                }).addTo(map);
 
-            navigator.geolocation.watchPosition(pos => {
-                const lat = pos.coords.latitude;
-                const lng = pos.coords.longitude;
-                if (!computerMarker) {
-                    computerMarker = L.marker([lat, lng], {
-                        icon: createGreenIcon()
-                    }).addTo(map);
-                    computerMarker.bindPopup('🟢 Computer Location');
-                    map.setView([lat, lng], 17);
-                } else {
-                    computerMarker.setLatLng([lat, lng]);
-                }
-                if (droneOnline && !droneMarker) {
-                    droneMarker = L.marker([lat + 0.003, lng + 0.003], {
-                        icon: createBlueIcon()
-                    }).addTo(map);
-                    droneMarker.bindPopup('🔵 Drone on Ground - Ready');
-                }
-            }, err => {
-                console.log("GEO ERROR:", err);
-                if (!computerMarker) {
-                    computerMarker = L.marker([39.02, -104.82], {
-                        icon: createGreenIcon()
-                    }).addTo(map);
-                    computerMarker.bindPopup('🟢 Computer Location');
-                }
-            }, {
-                enableHighAccuracy: true,
-                maximumAge: 0,
-                timeout: 5000
-            });
+                // Geolocation
+                navigator.geolocation.watchPosition(pos => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    if (!computerMarker) {
+                        computerMarker = L.marker([lat, lng], {
+                            icon: createGreenIcon()
+                        }).addTo(map);
+                        computerMarker.bindPopup('🟢 Computer Location');
+                        map.setView([lat, lng], 17);
+                    } else {
+                        computerMarker.setLatLng([lat, lng]);
+                    }
+                    if (droneOnline && !droneMarker) {
+                        droneMarker = L.marker([lat + 0.003, lng + 0.003], {
+                            icon: createBlueIcon()
+                        }).addTo(map);
+                        droneMarker.bindPopup('🔵 Drone on Ground - Ready');
+                    }
+                }, err => {
+                    console.log("GEO ERROR:", err);
+                    if (!computerMarker) {
+                        computerMarker = L.marker([39.02, -104.82], {
+                            icon: createGreenIcon()
+                        }).addTo(map);
+                        computerMarker.bindPopup('🟢 Computer Location');
+                    }
+                }, {
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 5000
+                });
 
-            setupDrawingControls();
+                setupDrawingControls();
+
+            } catch (e) {
+                // If map fails (offline, no internet), show fallback message
+                const mapContainer = document.getElementById('map');
+                mapContainer.innerHTML = '<p style="color:#64748b;padding:20px;">Map offline – connect to internet for map tiles</p>';
+                mapInitialized = false; // Allow retry if internet later
+            }
         }
 
         // ===== DRAWING CONTROLS =====
@@ -1121,17 +1137,52 @@
             document.getElementById("detections").textContent = detectionCount;
         }
 
-        // ===== AUTH LOGIC =====
+        // ===== UPDATED AUTH LOGIC (Fixed Button States) =====
         function updateAuthUI() {
             const connectBtn = document.getElementById("connectDroneBtn");
             const takeoffBtn = document.getElementById("takeoffBtn");
+            const landBtn = document.getElementById("landBtn");
+            const statusEl = document.getElementById('droneStatus');
 
+            // CASE 1: Connected + Drone Online + Code Verified
             if (authMode === "pilot" && droneConnected && droneOnline) {
                 connectBtn.style.display = "none";
-                takeoffBtn.disabled = areaSaved ? false : true;
-                takeoffBtn.style.opacity = areaSaved ? "1" : "0.5";
-                takeoffBtn.textContent = areaSaved ? "🛫 Take Off" : "⚠️ Save Area First";
 
+                // CASE 1a: Flying
+                if (droneTakeoffComplete) {
+                    takeoffBtn.disabled = true;
+                    takeoffBtn.textContent = "◈ Flying...";
+                    takeoffBtn.style.opacity = "0.5";
+                    landBtn.disabled = false;
+                    landBtn.style.opacity = "1";
+                    landBtn.textContent = "▼ Land";
+                    statusEl.className = 'drone-status online';
+                    statusEl.textContent = '🛸 FLYING - MISSION ACTIVE';
+                }
+                // CASE 1b: On Ground + Area Saved
+                else if (areaSaved) {
+                    takeoffBtn.disabled = false;
+                    takeoffBtn.textContent = "▲ TAKE OFF";
+                    takeoffBtn.style.opacity = "1";
+                    landBtn.disabled = true;
+                    landBtn.style.opacity = "0.5";
+                    landBtn.textContent = "▼ Land";
+                    statusEl.className = 'drone-status online';
+                    statusEl.textContent = '🟢 ONLINE · GROUND';
+                }
+                // CASE 1c: On Ground + No Area Saved
+                else {
+                    takeoffBtn.disabled = true;
+                    takeoffBtn.textContent = "⚠️ SAVE AREA";
+                    takeoffBtn.style.opacity = "0.5";
+                    landBtn.disabled = true;
+                    landBtn.style.opacity = "0.5";
+                    landBtn.textContent = "▼ Land";
+                    statusEl.className = 'drone-status online';
+                    statusEl.textContent = '🟢 ONLINE · SAVE AREA FIRST';
+                }
+
+                // Create drone marker if missing
                 if (!droneMarker && map && mapInitialized) {
                     const center = map.getCenter();
                     droneMarker = L.marker([center.lat + 0.003, center.lng + 0.003], {
@@ -1139,30 +1190,40 @@
                     }).addTo(map);
                     droneMarker.bindPopup('🔵 Drone on Ground - Ready');
                 }
+
                 updateStatus();
                 updateCameras();
                 if (isOnSkyhawkWifi) {
                     startPiDataListener();
                 }
-            } else if (authMode === "pilot" && !droneOnline) {
+            }
+            // CASE 2: Pilot mode but drone not online
+            else if (authMode === "pilot" && !droneOnline) {
                 connectBtn.style.display = "none";
                 takeoffBtn.disabled = true;
+                takeoffBtn.textContent = "⚠️ DRONE OFFLINE";
                 takeoffBtn.style.opacity = "0.5";
-                takeoffBtn.textContent = "⚠️ Drone Offline";
-                const statusEl = document.getElementById('droneStatus');
+                landBtn.disabled = true;
+                landBtn.style.opacity = "0.5";
+                landBtn.textContent = "▼ Land";
                 statusEl.className = 'drone-status error';
-                statusEl.textContent = '❌ DRONE NOT SETUP - Drone is powered off';
-            } else {
+                statusEl.textContent = '❌ DRONE OFFLINE - Pi not responding';
+            }
+            // CASE 3: Guest mode (not authenticated)
+            else {
                 droneOnline = false;
                 droneConnected = false;
                 droneTakeoffComplete = false;
                 connectBtn.style.display = "block";
                 takeoffBtn.disabled = true;
+                takeoffBtn.textContent = "⚠️ CONNECT FIRST";
                 takeoffBtn.style.opacity = "0.5";
-                takeoffBtn.textContent = "⚠️ Connect Drone First";
-                const statusEl = document.getElementById('droneStatus');
+                landBtn.disabled = true;
+                landBtn.style.opacity = "0.5";
+                landBtn.textContent = "▼ Land";
                 statusEl.className = 'drone-status offline';
                 statusEl.textContent = '🔴 DRONE OFFLINE';
+
                 if (droneMarker && map) {
                     map.removeLayer(droneMarker);
                     droneMarker = null;
@@ -1172,6 +1233,7 @@
                 });
                 mosquitoMarkers = [];
                 document.getElementById("detections").textContent = "--";
+
                 if (window.detectionInterval) {
                     clearInterval(window.detectionInterval);
                     window.detectionInterval = null;
@@ -1304,7 +1366,7 @@
             statusEl.className = 'drone-status online';
             statusEl.textContent = '🛸 DRONE FLYING - MISSION ACTIVE';
             document.getElementById('takeoffBtn').disabled = true;
-            document.getElementById('takeoffBtn').textContent = '🛸 Flying...';
+            document.getElementById('takeoffBtn').textContent = '◈ Flying...';
             document.getElementById('landBtn').disabled = false;
             document.getElementById('landBtn').style.opacity = '1';
             if (droneMarker && map) {
@@ -1334,7 +1396,7 @@
             statusEl.className = 'drone-status online';
             statusEl.textContent = '🟢 DRONE ONLINE - ON GROUND';
             document.getElementById('takeoffBtn').disabled = false;
-            document.getElementById('takeoffBtn').textContent = '🛫 Take Off';
+            document.getElementById('takeoffBtn').textContent = '▲ TAKE OFF';
             document.getElementById('landBtn').disabled = true;
             document.getElementById('landBtn').style.opacity = '0.5';
             if (droneMarker && map) {

@@ -1,10 +1,10 @@
 {
     "name": "Skyhawk Drone Control",
     "short_name": "Skyhawk",
-    "start_url": "/index.html?v=2",
+    "start_url": "/index.html?v=20",
     "display": "standalone",
-    "background_color": "#ffffff",
-    "theme_color": "#000000",
+    "background_color": "#1e293b",
+    "theme_color": "#1e293b",
     "icons": [
         {
             "src": "icon.png",

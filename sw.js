@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skyhawk-v6';
+const CACHE_NAME = 'skyhawk-v7';
 
 const urlsToCache = [
     '/',
@@ -8,6 +8,9 @@ const urlsToCache = [
     '/manifest.json',
     '/sw.js'
 ];
+
+// Cache OSM tiles (OpenStreetMap)
+const tileCache = 'skyhawk-tiles-v1';
 
 self.addEventListener('install', event => {
     event.waitUntil(
@@ -25,7 +28,7 @@ self.addEventListener('activate', event => {
         caches.keys().then(cacheNames => {
             return Promise.all(
                 cacheNames.map(cacheName => {
-                    if (cacheName !== CACHE_NAME) {
+                    if (cacheName !== CACHE_NAME && cacheName !== tileCache) {
                         return caches.delete(cacheName);
                     }
                 })
@@ -35,6 +38,24 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+    const url = new URL(event.request.url);
+
+    // Check if it's an OpenStreetMap tile request
+    if (url.hostname.includes('tile.openstreetmap.org')) {
+        event.respondWith(
+            caches.open(tileCache).then(cache => {
+                return cache.match(event.request).then(response => {
+                    return response || fetch(event.request).then(fetchResponse => {
+                        cache.put(event.request, fetchResponse.clone());
+                        return fetchResponse;
+                    });
+                });
+            })
+        );
+        return;
+    }
+
+    // Default: HTML, CSS, JS, manifest, etc.
     event.respondWith(
         caches.match(event.request)
             .then(response => {

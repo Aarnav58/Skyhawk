@@ -198,7 +198,7 @@ function verifyCodeWithPi(code) {
   }
 
   // 🎯 REAL IMPLEMENTATION: Replaces the fake simulation with a live secure network call
-  return fetch('https://10.42.0', {
+  return fetch('https://10.42.0.1/auth', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

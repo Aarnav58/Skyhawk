@@ -7,11 +7,6 @@
     <title>SKYHAWK Dashboard</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <!-- ============================================================
-         tinyworldmap fallback (works offline)
-         ============================================================ -->
-    <script src="https://tinyworldmap.com/dist/v3/tiny-world-all-10000.js">
-    </script>
 
     <style>
         /* -------------------- GENERAL -------------------- */
@@ -956,29 +951,20 @@
         }
 
         // ============================================================
-        //  FINAL FIX – MAP WORKS ONLINE & OFFLINE
+        //  SIMPLE MAP – OSM TILES ONLY (no external fallback)
+        //  Shows a message when tiles fail (offline)
         // ============================================================
         function initMap() {
             if (mapInitialized) return;
+            mapInitialized = true;
 
             try {
-                // Ensure the map container is visible and has dimensions
-                var mapContainer = document.getElementById('map');
-                if (!mapContainer) {
-                    console.error('Map container missing');
-                    return;
-                }
-
-                // Force the container to be visible if hidden by accordion
-                // (in case the accordion is closed, the size will be updated when opened)
-                mapContainer.style.display = 'block';
-
                 map = L.map('map', {
                     worldCopyJump: false,
                     maxBoundsViscosity: 1.0
                 }).setView([39.02, -104.82], 15);
 
-                // Add OSM tile layer (will work online)
+                // OSM tile layer
                 var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 19,
                     noWrap: true,
@@ -989,19 +975,21 @@
                     attribution: '&copy; OpenStreetMap contributors'
                 }).addTo(map);
 
-                // Add tinyworldmap as a fallback layer (works offline)
-                var fallbackLayer = new L.GridLayer.TinyWorld({
-                    maxZoom: 19,
-                    tileSize: 512,
-                    className: 'tiny-fallback'
-                }).addTo(map);
-
-                // If OSM tiles fail, the fallback is already there
+                // If tiles fail (offline), show a message in the map container
                 osmLayer.on('tileerror', function(e) {
-                    console.log('OSM tile error – using fallback');
+                    var mapContainer = document.getElementById('map');
+                    if (mapContainer && !mapContainer.querySelector('.offline-message')) {
+                        var msg = document.createElement('div');
+                        msg.className = 'offline-message';
+                        msg.style.cssText =
+                            'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,0.9);padding:20px;border-radius:8px;text-align:center;z-index:1000;color:#1e293b;font-weight:500;';
+                        msg.innerHTML = '🌐 Map offline – connect to internet for tiles<br><span style="font-size:14px;color:#64748b;">You can still draw areas and see markers</span>';
+                        mapContainer.style.position = 'relative';
+                        mapContainer.appendChild(msg);
+                    }
                 });
 
-                // Geolocation marker
+                // Computer marker
                 navigator.geolocation.watchPosition(pos => {
                     const lat = pos.coords.latitude;
                     const lng = pos.coords.longitude;
@@ -1028,21 +1016,17 @@
                     timeout: 5000
                 });
 
-                // Drawing controls
                 setupDrawingControls();
 
-                // Force map to resize after a short delay
+                // Force resize after a moment
                 setTimeout(() => {
                     map.invalidateSize();
                 }, 500);
 
-                mapInitialized = true;
-
             } catch (e) {
                 console.error('Map init error:', e);
-                // Fallback: show a simple message
                 document.getElementById('map').innerHTML =
-                    '<p style="color:#64748b;padding:20px;text-align:center;">Map unavailable – check console for errors</p>';
+                    '<p style="color:#64748b;padding:20px;text-align:center;">Map unavailable – check console</p>';
                 mapInitialized = false;
             }
         }

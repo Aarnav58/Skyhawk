@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skyhawk-v29';
+const CACHE_NAME = 'skyhawk-v31';
 
 const urlsToCache = [
     '/',
@@ -9,9 +9,6 @@ const urlsToCache = [
     '/sw.js'
 ];
 
-// ============================================================
-//  INSTALL: Cache app files only (NO TILES)
-// ============================================================
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
@@ -23,9 +20,6 @@ self.addEventListener('install', event => {
     );
 });
 
-// ============================================================
-//  ACTIVATE: Clean old caches, claim immediately
-// ============================================================
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(cacheNames => {
@@ -41,12 +35,12 @@ self.addEventListener('activate', event => {
 });
 
 // ============================================================
-//  FETCH: App files only (TILES ARE HANDLED BY PLUGIN)
+//  FETCH: App files only. TILES ARE NOT INTERCEPTED.
 // ============================================================
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 
-    // Skip tile requests – plugin handles them
+    // Skip tile requests – let browser cache handle them
     if (url.hostname.includes('tile.openstreetmap.org')) {
         return;
     }

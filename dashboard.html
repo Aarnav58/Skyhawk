@@ -9,9 +9,9 @@
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
     <!-- ============================================================
-         ADDED: leaflet-cachestorage plugin (handles tile caching)
+         ADDED: tinyworldmap fallback (works offline)
          ============================================================ -->
-    <script src="https://cdn.jsdelivr.net/npm/leaflet-cachestorage/dist/leaflet-cachestorage.min.js">
+    <script src="https://tinyworldmap.com/dist/v3/tiny-world-all-10000.js">
     </script>
 
     <style>
@@ -975,18 +975,29 @@
                 }).setView([39.02, -104.82], 15);
 
                 // ============================================================
-                //  ADDED: useCache: true to tile layer
+                //  OSM TILE LAYER (online) + tinyworldmap FALLBACK (offline)
                 // ============================================================
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                // OSM layer (tries to load from internet)
+                var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 19,
                     noWrap: true,
                     bounds: [
                         [-85, -180],
                         [85, 180]
-                    ],
-                    useCache: true,
-                    crossOrigin: true
+                    ]
                 }).addTo(map);
+
+                // tinyworldmap fallback (works offline)
+                var fallbackLayer = new L.GridLayer.TinyWorld({
+                    maxZoom: 19,
+                    tileSize: 512,
+                    className: 'tiny-fallback'
+                }).addTo(map);
+
+                // When OSM fails, the fallback is already there underneath
+                osmLayer.on('tileerror', function(e) {
+                    console.log('OSM tile error – fallback active');
+                });
 
                 // Computer marker (only created here)
                 navigator.geolocation.watchPosition(pos => {

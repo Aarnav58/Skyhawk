@@ -956,41 +956,52 @@
         }
 
         // ============================================================
-        //  FIXED initMap – NO "Map offline" error message
-        //  Always shows OSM (online) or tinyworldmap (offline)
+        //  FINAL FIX – MAP WORKS ONLINE & OFFLINE
         // ============================================================
         function initMap() {
             if (mapInitialized) return;
-            mapInitialized = true;
 
             try {
+                // Ensure the map container is visible and has dimensions
+                var mapContainer = document.getElementById('map');
+                if (!mapContainer) {
+                    console.error('Map container missing');
+                    return;
+                }
+
+                // Force the container to be visible if hidden by accordion
+                // (in case the accordion is closed, the size will be updated when opened)
+                mapContainer.style.display = 'block';
+
                 map = L.map('map', {
                     worldCopyJump: false,
                     maxBoundsViscosity: 1.0
                 }).setView([39.02, -104.82], 15);
 
-                // OSM layer (online)
+                // Add OSM tile layer (will work online)
                 var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 19,
                     noWrap: true,
                     bounds: [
                         [-85, -180],
                         [85, 180]
-                    ]
+                    ],
+                    attribution: '&copy; OpenStreetMap contributors'
                 }).addTo(map);
 
-                // tinyworldmap fallback (offline)
+                // Add tinyworldmap as a fallback layer (works offline)
                 var fallbackLayer = new L.GridLayer.TinyWorld({
                     maxZoom: 19,
                     tileSize: 512,
                     className: 'tiny-fallback'
                 }).addTo(map);
 
+                // If OSM tiles fail, the fallback is already there
                 osmLayer.on('tileerror', function(e) {
-                    console.log('OSM tile error – fallback active');
+                    console.log('OSM tile error – using fallback');
                 });
 
-                // Computer marker
+                // Geolocation marker
                 navigator.geolocation.watchPosition(pos => {
                     const lat = pos.coords.latitude;
                     const lng = pos.coords.longitude;
@@ -998,18 +1009,18 @@
                         computerMarker = L.marker([lat, lng], {
                             icon: createGreenIcon()
                         }).addTo(map);
-                        computerMarker.bindPopup('🟢 Computer Location');
+                        computerMarker.bindPopup('💻 Computer Location');
                         map.setView([lat, lng], 17);
                     } else {
                         computerMarker.setLatLng([lat, lng]);
                     }
                 }, err => {
-                    console.log("GEO ERROR:", err);
+                    console.log('Geolocation error:', err);
                     if (!computerMarker) {
                         computerMarker = L.marker([39.02, -104.82], {
                             icon: createGreenIcon()
                         }).addTo(map);
-                        computerMarker.bindPopup('🟢 Computer Location');
+                        computerMarker.bindPopup('💻 Computer Location (approx)');
                     }
                 }, {
                     enableHighAccuracy: true,
@@ -1017,19 +1028,21 @@
                     timeout: 5000
                 });
 
+                // Drawing controls
                 setupDrawingControls();
+
+                // Force map to resize after a short delay
+                setTimeout(() => {
+                    map.invalidateSize();
+                }, 500);
+
+                mapInitialized = true;
 
             } catch (e) {
                 console.error('Map init error:', e);
-                // Fallback: just show tinyworldmap
-                try {
-                    map = L.map('map', { worldCopyJump: false, maxBoundsViscosity: 1.0 }).setView([39.02, -104.82], 15);
-                    new L.GridLayer.TinyWorld({ maxZoom: 19, tileSize: 512 }).addTo(map);
-                } catch (e2) {
-                    // If all fails, just show a simple message without breaking the UI
-                    document.getElementById('map').innerHTML =
-                        '<p style="color:#64748b;padding:20px;text-align:center;">Map loading...</p>';
-                }
+                // Fallback: show a simple message
+                document.getElementById('map').innerHTML =
+                    '<p style="color:#64748b;padding:20px;text-align:center;">Map unavailable – check console for errors</p>';
                 mapInitialized = false;
             }
         }

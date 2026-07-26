@@ -800,8 +800,14 @@
             }
 
             // ============================================================
-            //  FIX: Force button state update after Pi connects
+            //  FIX 1: Set droneConnected = true when droneOnline is true
             // ============================================================
+            if (data.droneOnline) {
+                droneConnected = true;
+                droneOnline = true;
+            }
+
+            // Force button state update after Pi connects
             updateAuthUI();
         }
 

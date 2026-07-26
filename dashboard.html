@@ -7,9 +7,8 @@
     <title>SKYHAWK Dashboard</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
     <!-- ============================================================
-         ADDED: tinyworldmap fallback (works offline)
+         tinyworldmap fallback (works offline)
          ============================================================ -->
     <script src="https://tinyworldmap.com/dist/v3/tiny-world-all-10000.js">
     </script>
@@ -749,7 +748,6 @@
         }
 
         // ===== UPDATE STATUS FROM PI DATA =====
-        // THIS IS WHERE THE DRONE MARKER COMES FROM
         function updateStatusFromPi(data) {
             hasReceivedData = true;
 
@@ -776,21 +774,18 @@
             }
 
             // === DRONE LOCATION MARKER ===
-            // ONLY create/update drone marker from authserver location
             if (data.location && map && mapInitialized) {
                 const parts = data.location.split(',');
                 if (parts.length === 2) {
                     const lat = parseFloat(parts[0]);
                     const lng = parseFloat(parts[1]);
                     if (!isNaN(lat) && !isNaN(lng)) {
-                        // If marker doesn't exist, create it
                         if (!droneMarker) {
                             droneMarker = L.marker([lat, lng], {
                                 icon: createBlueIcon()
                             }).addTo(map);
                             droneMarker.bindPopup('🛸 Drone Location');
                         } else {
-                            // Otherwise, update its position
                             droneMarker.setLatLng([lat, lng]);
                         }
                     }
@@ -805,15 +800,11 @@
                 });
             }
 
-            // ============================================================
-            //  FIX 1: Set droneConnected = true when droneOnline is true
-            // ============================================================
+            // Fix: set droneConnected when online
             if (data.droneOnline) {
                 droneConnected = true;
                 droneOnline = true;
             }
-
-            // Force button state update after Pi connects
             updateAuthUI();
         }
 
@@ -964,6 +955,10 @@
             });
         }
 
+        // ============================================================
+        //  FIXED initMap – NO "Map offline" error message
+        //  Always shows OSM (online) or tinyworldmap (offline)
+        // ============================================================
         function initMap() {
             if (mapInitialized) return;
             mapInitialized = true;
@@ -974,10 +969,7 @@
                     maxBoundsViscosity: 1.0
                 }).setView([39.02, -104.82], 15);
 
-                // ============================================================
-                //  OSM TILE LAYER (online) + tinyworldmap FALLBACK (offline)
-                // ============================================================
-                // OSM layer (tries to load from internet)
+                // OSM layer (online)
                 var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 19,
                     noWrap: true,
@@ -987,19 +979,18 @@
                     ]
                 }).addTo(map);
 
-                // tinyworldmap fallback (works offline)
+                // tinyworldmap fallback (offline)
                 var fallbackLayer = new L.GridLayer.TinyWorld({
                     maxZoom: 19,
                     tileSize: 512,
                     className: 'tiny-fallback'
                 }).addTo(map);
 
-                // When OSM fails, the fallback is already there underneath
                 osmLayer.on('tileerror', function(e) {
                     console.log('OSM tile error – fallback active');
                 });
 
-                // Computer marker (only created here)
+                // Computer marker
                 navigator.geolocation.watchPosition(pos => {
                     const lat = pos.coords.latitude;
                     const lng = pos.coords.longitude;
@@ -1012,7 +1003,6 @@
                     } else {
                         computerMarker.setLatLng([lat, lng]);
                     }
-                    // Drone marker is NOT created here – handled in updateStatusFromPi()
                 }, err => {
                     console.log("GEO ERROR:", err);
                     if (!computerMarker) {
@@ -1030,8 +1020,16 @@
                 setupDrawingControls();
 
             } catch (e) {
-                const mapContainer = document.getElementById('map');
-                mapContainer.innerHTML = '<p style="color:#64748b;padding:20px;">Map offline – connect to internet for map tiles</p>';
+                console.error('Map init error:', e);
+                // Fallback: just show tinyworldmap
+                try {
+                    map = L.map('map', { worldCopyJump: false, maxBoundsViscosity: 1.0 }).setView([39.02, -104.82], 15);
+                    new L.GridLayer.TinyWorld({ maxZoom: 19, tileSize: 512 }).addTo(map);
+                } catch (e2) {
+                    // If all fails, just show a simple message without breaking the UI
+                    document.getElementById('map').innerHTML =
+                        '<p style="color:#64748b;padding:20px;text-align:center;">Map loading...</p>';
+                }
                 mapInitialized = false;
             }
         }

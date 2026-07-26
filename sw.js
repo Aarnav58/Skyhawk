@@ -10,7 +10,6 @@ const urlsToCache = [
     '/sw.js'
 ];
 
-// Install - cache app files only
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
@@ -22,7 +21,6 @@ self.addEventListener('install', event => {
     );
 });
 
-// Activate - clean old caches
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(cacheNames => {
@@ -37,31 +35,33 @@ self.addEventListener('activate', event => {
     );
 });
 
-// Fetch - cache tiles as you go (simple)
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 
-    // Map tiles - cache-as-you-go
     if (url.hostname.includes('tile.openstreetmap.org')) {
         event.respondWith(
             caches.open(TILE_CACHE).then(cache => {
                 return cache.match(event.request).then(cached => {
-                    const fetchPromise = fetch(event.request).then(response => {
+                    // If cached, return it (offline or online)
+                    if (cached) {
+                        return cached;
+                    }
+                    // If not cached, fetch and save for next time
+                    return fetch(event.request).then(response => {
                         if (response.ok) {
                             cache.put(event.request, response.clone());
                         }
                         return response;
                     }).catch(() => {
+                        // Offline and not cached = blank tile
                         return new Response('', { status: 404 });
                     });
-                    return cached || fetchPromise;
                 });
             })
         );
         return;
     }
 
-    // App files - cache-first
     event.respondWith(
         caches.match(event.request)
             .then(response => {

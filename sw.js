@@ -1,5 +1,5 @@
-const CACHE_NAME = 'skyhawk-v22';
-const TILE_CACHE = 'skyhawk-tiles-v7';
+const CACHE_NAME = 'skyhawk-v26';
+const TILE_CACHE = 'skyhawk-tiles-v11';
 
 const urlsToCache = [
     '/',
@@ -10,12 +10,90 @@ const urlsToCache = [
     '/sw.js'
 ];
 
+// ============================================================
+//  CHANGE THIS TO YOUR ACTUAL FLIGHT LOCATION
+//  (Only caches tiles for this area)
+// ============================================================
+const CACHE_AREA = {
+    minLat: 39.00,
+    maxLat: 39.04,
+    minLng: -104.86,
+    maxLng: -104.78,
+    minZoom: 10,
+    maxZoom: 16
+};
+
+// ============================================================
+//  Generate ONLY tiles for the defined area
+// ============================================================
+function generateTileUrls() {
+    const urls = [];
+    const { minLat, maxLat, minLng, maxLng, minZoom, maxZoom } = CACHE_AREA;
+
+    function latLngToTile(lat, lng, zoom) {
+        const latRad = lat * Math.PI / 180;
+        const n = Math.pow(2, zoom);
+        const x = Math.floor((lng + 180) / 360 * n);
+        const y = Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * n);
+        return { x, y };
+    }
+
+    for (let z = minZoom; z <= maxZoom; z++) {
+        const topLeft = latLngToTile(maxLat, minLng, z);
+        const bottomRight = latLngToTile(minLat, maxLng, z);
+
+        const xMin = Math.max(0, topLeft.x - 1);
+        const xMax = bottomRight.x + 1;
+        const yMin = Math.max(0, topLeft.y - 1);
+        const yMax = bottomRight.y + 1;
+
+        for (let x = xMin; x <= xMax; x++) {
+            for (let y = yMin; y <= yMax; y++) {
+                ['a', 'b', 'c'].forEach(sub => {
+                    urls.push(`https://${sub}.tile.openstreetmap.org/${z}/${x}/${y}.png`);
+                });
+            }
+        }
+    }
+    return urls;
+}
+
+// ============================================================
+//  INSTALL: Cache app files + pre-cache tiles
+// ============================================================
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
                 console.log('Caching app files...');
                 return cache.addAll(urlsToCache);
+            })
+            .then(() => {
+                console.log('Pre-caching map tiles for your area...');
+                const tileUrls = generateTileUrls();
+                console.log(`Caching ${tileUrls.length} tiles...`);
+
+                const batchSize = 30;
+                const batches = [];
+                for (let i = 0; i < tileUrls.length; i += batchSize) {
+                    batches.push(tileUrls.slice(i, i + batchSize));
+                }
+
+                return Promise.all(batches.map(batch => {
+                    return caches.open(TILE_CACHE).then(cache => {
+                        return Promise.allSettled(
+                            batch.map(url => {
+                                return fetch(url)
+                                    .then(response => {
+                                        if (response.ok) {
+                                            cache.put(url, response);
+                                        }
+                                    })
+                                    .catch(() => {});
+                            })
+                        );
+                    });
+                }));
             })
             .then(() => self.skipWaiting())
     );
@@ -42,18 +120,15 @@ self.addEventListener('fetch', event => {
         event.respondWith(
             caches.open(TILE_CACHE).then(cache => {
                 return cache.match(event.request).then(cached => {
-                    // If cached, return it (offline or online)
                     if (cached) {
                         return cached;
                     }
-                    // If not cached, fetch and save for next time
                     return fetch(event.request).then(response => {
                         if (response.ok) {
                             cache.put(event.request, response.clone());
                         }
                         return response;
                     }).catch(() => {
-                        // Offline and not cached = blank tile
                         return new Response('', { status: 404 });
                     });
                 });

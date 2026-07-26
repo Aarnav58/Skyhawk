@@ -1,5 +1,5 @@
-const CACHE_NAME = 'skyhawk-v20';
-const TILE_CACHE = 'skyhawk-tiles-v5';
+const CACHE_NAME = 'skyhawk-v22';
+const TILE_CACHE = 'skyhawk-tiles-v7';
 
 const urlsToCache = [
     '/',
@@ -37,7 +37,7 @@ self.addEventListener('activate', event => {
     );
 });
 
-// Fetch - cache tiles as you go
+// Fetch - cache tiles as you go (simple)
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 

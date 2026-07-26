@@ -1,18 +1,15 @@
-const CACHE_NAME = 'skyhawk-v55';
-const TILE_CACHE = 'skyhawk-tiles-v35';
+const CACHE_NAME = 'skyhawk-v100';
+const TILE_CACHE = 'skyhawk-tiles-v70';
 
 const urlsToCache = [
     '/',
     '/index.html',
-    '/index.html?v=2',
+    '/index.html?v=100',
     '/dashboard.html',
     '/manifest.json',
     '/sw.js'
 ];
 
-// ============================================================
-//  INSTALL – Cache App Files Only (No Tile Pre‑caching)
-// ============================================================
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
@@ -24,9 +21,6 @@ self.addEventListener('install', event => {
     );
 });
 
-// ============================================================
-//  ACTIVATE – Clean Old Caches
-// ============================================================
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(cacheNames => {
@@ -41,28 +35,23 @@ self.addEventListener('activate', event => {
     );
 });
 
-// ============================================================
-//  FETCH – Cache Tiles As You View Them
-// ============================================================
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 
-    // === Map Tiles – Cache on the fly ===
-    if (url.hostname.includes('tile.openstreetmap.org')) {
+    // ===== MAP TILES – CACHE AS YOU VIEW =====
+    if (url.hostname.includes('tile.openstreetmap.org') || url.hostname.includes('tile.osm.org')) {
         event.respondWith(
             caches.open(TILE_CACHE).then(cache => {
                 return cache.match(event.request).then(cached => {
                     if (cached) {
-                        return cached;   // Already cached, serve it
+                        return cached;
                     }
-                    // Not cached: fetch, store, and return
                     return fetch(event.request).then(response => {
                         if (response.ok) {
                             cache.put(event.request, response.clone());
                         }
                         return response;
                     }).catch(() => {
-                        // Offline and not cached = blank tile
                         return new Response('', { status: 404 });
                     });
                 });
@@ -71,7 +60,7 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // === App Files ===
+    // ===== APP FILES =====
     event.respondWith(
         caches.match(event.request)
             .then(response => {

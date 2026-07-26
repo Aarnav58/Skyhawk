@@ -1,5 +1,5 @@
-const CACHE_NAME = 'skyhawk-v26';
-const TILE_CACHE = 'skyhawk-tiles-v11';
+const CACHE_NAME = 'skyhawk-v28';          // ← Change this when updating app
+const TILE_CACHE = 'skyhawk-tiles-v11';     // ← NEVER CHANGE THIS AGAIN
 
 const urlsToCache = [
     '/',
@@ -12,7 +12,6 @@ const urlsToCache = [
 
 // ============================================================
 //  CHANGE THIS TO YOUR ACTUAL FLIGHT LOCATION
-//  (Only caches tiles for this area)
 // ============================================================
 const CACHE_AREA = {
     minLat: 39.00,
@@ -23,9 +22,6 @@ const CACHE_AREA = {
     maxZoom: 16
 };
 
-// ============================================================
-//  Generate ONLY tiles for the defined area
-// ============================================================
 function generateTileUrls() {
     const urls = [];
     const { minLat, maxLat, minLng, maxLng, minZoom, maxZoom } = CACHE_AREA;
@@ -58,9 +54,6 @@ function generateTileUrls() {
     return urls;
 }
 
-// ============================================================
-//  INSTALL: Cache app files + pre-cache tiles
-// ============================================================
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
@@ -104,12 +97,19 @@ self.addEventListener('activate', event => {
         caches.keys().then(cacheNames => {
             return Promise.all(
                 cacheNames.map(cacheName => {
+                    // ONLY delete old APP caches, KEEP tile cache
                     if (cacheName !== CACHE_NAME && cacheName !== TILE_CACHE) {
                         return caches.delete(cacheName);
                     }
                 })
             );
-        }).then(() => self.clients.claim())
+        }).then(() => {
+            // ============================================================
+            //  CRITICAL: Force Service Worker to take control IMMEDIATELY
+            //  This makes tiles stay after login/logout
+            // ============================================================
+            return self.clients.claim();
+        })
     );
 });
 
